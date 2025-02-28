@@ -1,0 +1,45 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "nodetool-comfy"
+version = "0.6.0"
+description = "ComfyUI nodes for Nodetool"
+readme = "README.md"
+authors = ["Matthias Georgi <matti.georgi@gmail.com>"]
+packages = [
+  { include = "nodetool", from = "src" },
+  { include = "comfy", from = "src" },
+  { include = "comfy_custom_nodes", from = "src" },
+  { include = "comfy_extras", from = "src" },
+  { include = "folder_paths.py", from = "src" },
+  { include = "latent_preview.py", from = "src" },
+  { include = "node_helpers.py", from = "src" },
+  { include = "nodes.py", from = "src" },
+]
+package-mode = true
+
+[tool.poetry.dependencies]
+python = "^3.10"
+nodetool-core = { git = "https://github.com/nodetool-ai/nodetool-core.git", rev = "main" }
+torch = "2.4.1"
+torchsde = "0.2.6"
+torchvision = "0.19.1"
+torchaudio = "2.4.1"
+numpy = "1.26.4"
+einops = "0.8.0"
+transformers = "4.48.1"
+tokenizers = ">=0.13.3"
+sentencepiece = "0.2.0"
+safetensors = "0.4.5"
+aiohttp = "3.11.2"
+yarl = ">=1.18.0"
+pyyaml = "6.0.2"
+Pillow = "11.0.0"
+scipy = "1.14.1"
+tqdm = "4.67.0"
+psutil = "6.1.0"
+
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
