@@ -20,14 +20,6 @@ cd nodetool-comfy
 pip install -e .
 ```
 
-## Usage
-
-```python
-from nodetool import comfy
-
-# Example usage code here
-```
-
 ## Requirements
 
 - Python 3.10+
@@ -35,7 +27,7 @@ from nodetool import comfy
 
 ## License
 
-MIT
+AGPL
 
 ## Contributing
 
