@@ -46,6 +46,6 @@ tqdm = "4.67.0"
 psutil = "6.1.0"
 yacs = "0.1.8"
 yapf = "0.40.2"
-
-[tool.poetry.requires-plugins]
-poetry-plugin-export = ">=1.8"
+fvcore = "0.1.5.post20221221"
+protobuf = "*"
+wheel = "0.44.0"
