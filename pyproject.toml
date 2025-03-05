@@ -19,7 +19,7 @@ packages = [
   { include = "nodes.py", from = "src" },
 ]
 package-mode = true
-
+include = ["src/nodetool/package-metadata/nodetool-comfy.json"]
 [tool.poetry.dependencies]
 python = "^3.10"
 nodetool-core = { git = "https://github.com/nodetool-ai/nodetool-core.git", rev = "main" }
