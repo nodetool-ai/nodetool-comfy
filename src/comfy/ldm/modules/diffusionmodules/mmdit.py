@@ -1,5 +1,4 @@
-import logging
-import math
+from functools import partial
 from typing import Dict, Optional, List
 
 import numpy as np
@@ -72,45 +71,33 @@ class PatchEmbed(nn.Module):
             strict_img_size: bool = True,
             dynamic_img_pad: bool = True,
             padding_mode='circular',
+            conv3d=False,
             dtype=None,
             device=None,
             operations=None,
     ):
         super().__init__()
-        self.patch_size = (patch_size, patch_size)
+        try:
+            len(patch_size)
+            self.patch_size = patch_size
+        except:
+            if conv3d:
+                self.patch_size = (patch_size, patch_size, patch_size)
+            else:
+                self.patch_size = (patch_size, patch_size)
         self.padding_mode = padding_mode
-        if img_size is not None:
-            self.img_size = (img_size, img_size)
-            self.grid_size = tuple([s // p for s, p in zip(self.img_size, self.patch_size)])
-            self.num_patches = self.grid_size[0] * self.grid_size[1]
-        else:
-            self.img_size = None
-            self.grid_size = None
-            self.num_patches = None
 
         # flatten spatial dim and transpose to channels last, kept for bwd compat
         self.flatten = flatten
         self.strict_img_size = strict_img_size
         self.dynamic_img_pad = dynamic_img_pad
-
-        self.proj = operations.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size, bias=bias, dtype=dtype, device=device)
+        if conv3d:
+            self.proj = operations.Conv3d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size, bias=bias, dtype=dtype, device=device)
+        else:
+            self.proj = operations.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size, bias=bias, dtype=dtype, device=device)
         self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
 
     def forward(self, x):
-        # B, C, H, W = x.shape
-        # if self.img_size is not None:
-        #     if self.strict_img_size:
-        #         _assert(H == self.img_size[0], f"Input height ({H}) doesn't match model ({self.img_size[0]}).")
-        #         _assert(W == self.img_size[1], f"Input width ({W}) doesn't match model ({self.img_size[1]}).")
-        #     elif not self.dynamic_img_pad:
-        #         _assert(
-        #             H % self.patch_size[0] == 0,
-        #             f"Input height ({H}) should be divisible by patch size ({self.patch_size[0]})."
-        #         )
-        #         _assert(
-        #             W % self.patch_size[1] == 0,
-        #             f"Input width ({W}) should be divisible by patch size ({self.patch_size[1]})."
-        #         )
         if self.dynamic_img_pad:
             x = comfy.ldm.common_dit.pad_to_patch_size(x, self.patch_size, padding_mode=self.padding_mode)
         x = self.proj(x)
@@ -122,7 +109,7 @@ class PatchEmbed(nn.Module):
 def modulate(x, shift, scale):
     if shift is None:
         shift = torch.zeros_like(scale)
-    return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
+    return torch.addcmul(shift.unsqueeze(1), x, 1+ scale.unsqueeze(1))
 
 
 #################################################################################
@@ -334,7 +321,7 @@ class SelfAttention(nn.Module):
 
 class RMSNorm(torch.nn.Module):
     def __init__(
-        self, dim: int, elementwise_affine: bool = False, eps: float = 1e-6, device=None, dtype=None
+        self, dim: int, elementwise_affine: bool = False, eps: float = 1e-6, device=None, dtype=None, **kwargs
     ):
         """
         Initialize the RMSNorm normalization layer.
@@ -577,10 +564,7 @@ class DismantledBlock(nn.Module):
         assert not self.pre_only
         attn1 = self.attn.post_attention(attn)
         attn2 = self.attn2.post_attention(attn2)
-        out1 = gate_msa.unsqueeze(1) * attn1
-        out2 = gate_msa2.unsqueeze(1) * attn2
-        x = x + out1
-        x = x + out2
+        x = gate_cat(x, gate_msa, gate_msa2, attn1, attn2)
         x = x + gate_mlp.unsqueeze(1) * self.mlp(
             modulate(self.norm2(x), shift_mlp, scale_mlp)
         )
@@ -607,6 +591,11 @@ class DismantledBlock(nn.Module):
             )
             return self.post_attention(attn, *intermediates)
 
+def gate_cat(x, gate_msa, gate_msa2, attn1, attn2):
+    out1 = gate_msa.unsqueeze(1) * attn1
+    out2 = gate_msa2.unsqueeze(1) * attn2
+    x = torch.stack([x, out1, out2], dim=0).sum(dim=0)
+    return x
 
 def block_mixing(*args, use_checkpoint=True, **kwargs):
     if use_checkpoint:
@@ -617,7 +606,7 @@ def block_mixing(*args, use_checkpoint=True, **kwargs):
         return _block_mixing(*args, **kwargs)
 
 
-def _block_mixing(context, x, context_block, x_block, c):
+def _block_mixing(context, x, context_block, x_block, c, transformer_options={}):
     context_qkv, context_intermediates = context_block.pre_attention(context, c)
 
     if x_block.x_block_self_attn:
@@ -633,6 +622,7 @@ def _block_mixing(context, x, context_block, x_block, c):
     attn = optimized_attention(
         qkv[0], qkv[1], qkv[2],
         heads=x_block.attn.num_heads,
+        transformer_options=transformer_options,
     )
     context_attn, x_attn = (
         attn[:, : context_qkv[0].shape[1]],
@@ -648,6 +638,7 @@ def _block_mixing(context, x, context_block, x_block, c):
         attn2 = optimized_attention(
                 x_qkv2[0], x_qkv2[1], x_qkv2[2],
                 heads=x_block.attn2.num_heads,
+                transformer_options=transformer_options,
             )
         x = x_block.post_attention_x(x_attn, attn2, *x_intermediates)
     else:
@@ -969,10 +960,10 @@ class MMDiT(nn.Module):
             if ("double_block", i) in blocks_replace:
                 def block_wrap(args):
                     out = {}
-                    out["txt"], out["img"] = self.joint_blocks[i](args["txt"], args["img"], c=args["vec"])
+                    out["txt"], out["img"] = self.joint_blocks[i](args["txt"], args["img"], c=args["vec"], transformer_options=args["transformer_options"])
                     return out
 
-                out = blocks_replace[("double_block", i)]({"img": x, "txt": context, "vec": c_mod}, {"original_block": block_wrap})
+                out = blocks_replace[("double_block", i)]({"img": x, "txt": context, "vec": c_mod, "transformer_options": transformer_options}, {"original_block": block_wrap})
                 context = out["txt"]
                 x = out["img"]
             else:
@@ -981,6 +972,7 @@ class MMDiT(nn.Module):
                     x,
                     c=c_mod,
                     use_checkpoint=self.use_checkpoint,
+                    transformer_options=transformer_options,
                 )
             if control is not None:
                 control_o = control.get("output")

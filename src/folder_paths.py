@@ -1,296 +1,339 @@
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-# Copyright (c) @comfyanonymous
-# Project Repository: https://github.com/comfyanonymous/ComfyUI
+from __future__ import annotations
 
 import os
 import time
-from typing import Any, Optional, Union
-import os
+import mimetypes
+import logging
+from typing import Literal, List
+from collections.abc import Collection
 
-from nodetool.common.environment import Environment
+from comfy.cli_args import args
 
-log = Environment.get_logger()
+supported_pt_extensions: set[str] = {'.ckpt', '.pt', '.pt2', '.bin', '.pth', '.safetensors', '.pkl', '.sft'}
 
-supported_pt_extensions = set([".ckpt", ".pt", ".bin", ".pth", ".safetensors", ".sft"])
+folder_names_and_paths: dict[str, tuple[list[str], set[str]]] = {}
+
+# --base-directory - Resets all default paths configured in folder_paths with a new base path
+if args.base_directory:
+    base_path = os.path.abspath(args.base_directory)
+else:
+    base_path = os.path.dirname(os.path.realpath(__file__))
+
+models_dir = os.path.join(base_path, "models")
+folder_names_and_paths["checkpoints"] = ([os.path.join(models_dir, "checkpoints")], supported_pt_extensions)
+folder_names_and_paths["configs"] = ([os.path.join(models_dir, "configs")], [".yaml"])
+
+folder_names_and_paths["loras"] = ([os.path.join(models_dir, "loras")], supported_pt_extensions)
+folder_names_and_paths["vae"] = ([os.path.join(models_dir, "vae")], supported_pt_extensions)
+folder_names_and_paths["text_encoders"] = ([os.path.join(models_dir, "text_encoders"), os.path.join(models_dir, "clip")], supported_pt_extensions)
+folder_names_and_paths["diffusion_models"] = ([os.path.join(models_dir, "unet"), os.path.join(models_dir, "diffusion_models")], supported_pt_extensions)
+folder_names_and_paths["clip_vision"] = ([os.path.join(models_dir, "clip_vision")], supported_pt_extensions)
+folder_names_and_paths["style_models"] = ([os.path.join(models_dir, "style_models")], supported_pt_extensions)
+folder_names_and_paths["embeddings"] = ([os.path.join(models_dir, "embeddings")], supported_pt_extensions)
+folder_names_and_paths["diffusers"] = ([os.path.join(models_dir, "diffusers")], ["folder"])
+folder_names_and_paths["vae_approx"] = ([os.path.join(models_dir, "vae_approx")], supported_pt_extensions)
+
+folder_names_and_paths["controlnet"] = ([os.path.join(models_dir, "controlnet"), os.path.join(models_dir, "t2i_adapter")], supported_pt_extensions)
+folder_names_and_paths["gligen"] = ([os.path.join(models_dir, "gligen")], supported_pt_extensions)
+
+folder_names_and_paths["upscale_models"] = ([os.path.join(models_dir, "upscale_models")], supported_pt_extensions)
+
+folder_names_and_paths["custom_nodes"] = ([os.path.join(base_path, "custom_nodes")], set())
+
+folder_names_and_paths["hypernetworks"] = ([os.path.join(models_dir, "hypernetworks")], supported_pt_extensions)
+
+folder_names_and_paths["photomaker"] = ([os.path.join(models_dir, "photomaker")], supported_pt_extensions)
+
+folder_names_and_paths["classifiers"] = ([os.path.join(models_dir, "classifiers")], {""})
+
+folder_names_and_paths["model_patches"] = ([os.path.join(models_dir, "model_patches")], supported_pt_extensions)
+
+folder_names_and_paths["audio_encoders"] = ([os.path.join(models_dir, "audio_encoders")], supported_pt_extensions)
+
+output_directory = os.path.join(base_path, "output")
+temp_directory = os.path.join(base_path, "temp")
+input_directory = os.path.join(base_path, "input")
+user_directory = os.path.join(base_path, "user")
+
 filename_list_cache: dict[str, tuple[list[str], dict[str, float], float]] = {}
-data_dir = Environment.get_comfy_folder() or ".data"
-models_dir = os.path.join(data_dir, "models")
 
-log.info(f"ComfyUI models dir: {models_dir}")
+class CacheHelper:
+    """
+    Helper class for managing file list cache data.
+    """
+    def __init__(self):
+        self.cache: dict[str, tuple[list[str], dict[str, float], float]] = {}
+        self.active = False
 
+    def get(self, key: str, default=None) -> tuple[list[str], dict[str, float], float]:
+        if not self.active:
+            return default
+        return self.cache.get(key, default)
 
-custom_nodes_directory = os.path.join(
-    os.path.dirname((os.path.realpath(__file__))),
-    "comfy_custom_nodes",
-)
+    def set(self, key: str, value: tuple[list[str], dict[str, float], float]) -> None:
+        if self.active:
+            self.cache[key] = value
 
+    def clear(self):
+        self.cache.clear()
 
-def model_path(name: str) -> str:
-    return os.path.join(models_dir, name)
+    def __enter__(self):
+        self.active = True
+        return self
 
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.active = False
+        self.clear()
 
-def get_output_directory() -> str:
-    """NOT USED"""
-    return "/tmp"
+cache_helper = CacheHelper()
 
-
-def get_temp_directory() -> str:
-    """NOT USED"""
-    return "/tmp"
-
-
-def get_input_directory() -> str:
-    """NOT USED"""
-    return "/tmp"
-
-
-def get_save_image_path(filename_prefix: str, output_dir: str, *args) -> Any:
-    """NOT USED"""
-    return "/tmp"
-
-
-def get_annotated_filepath(filename: str) -> str:
-    """NOT USED"""
-    return filename
-
-
-def exists_annotated_filepath(filename: str) -> bool:
-    """NOT USED"""
-    raise NotImplementedError("Not implemented")
-
-
-folder_names_and_paths: dict[str, tuple[list[str], set[str]]] = {
-    "annotator": ([model_path("annotator")], supported_pt_extensions),
-    "checkpoints": ([model_path("checkpoints")], supported_pt_extensions),
-    "configs": ([model_path("configs")], set([".yaml"])),
-    "loras": ([model_path("loras")], supported_pt_extensions),
-    "vae": ([model_path("vae")], supported_pt_extensions),
-    "clip": ([model_path("clip")], supported_pt_extensions),
-    "unet": ([model_path("unet")], supported_pt_extensions),
-    "instantid": ([model_path("instantid")], supported_pt_extensions),
-    "text_encoders": ([model_path("text_encoders")], supported_pt_extensions),
-    "clip_vision": ([model_path("clip_vision")], supported_pt_extensions),
-    "style_models": ([model_path("style_models")], supported_pt_extensions),
-    "embeddings": ([model_path("embeddings")], supported_pt_extensions),
-    "vae_approx": ([model_path("vae_approx")], supported_pt_extensions),
-    "controlnet": (
-        [model_path("controlnet"), model_path("t2i_adapter")],
-        supported_pt_extensions,
-    ),
-    "gligen": ([model_path("gligen")], supported_pt_extensions),
-    "upscale_models": ([model_path("upscale_models")], supported_pt_extensions),
-    "photomaker": ([model_path("photomaker")], supported_pt_extensions),
-    "custom_nodes": ([custom_nodes_directory], set()),
-    "hypernetworks": ([model_path("hypernetworks")], supported_pt_extensions),
-    "classifiers": ([model_path("classifiers")], {""}),
+extension_mimetypes_cache = {
+    "webp" : "image",
+    "fbx" : "model",
 }
 
+def map_legacy(folder_name: str) -> str:
+    legacy = {"unet": "diffusion_models",
+              "clip": "text_encoders"}
+    return legacy.get(folder_name, folder_name)
 
-def add_model_folder_path(folder_name: str, full_folder_path: str):
-    """
-    Add a new folder path for a specific model type.
+if not os.path.exists(input_directory):
+    try:
+        os.makedirs(input_directory)
+    except:
+        logging.error("Failed to create input directory")
 
-    Args:
-        folder_name (str): The name of the model type.
-        full_folder_path (str): The full path to the folder containing the models.
+def set_output_directory(output_dir: str) -> None:
+    global output_directory
+    output_directory = output_dir
+
+def set_temp_directory(temp_dir: str) -> None:
+    global temp_directory
+    temp_directory = temp_dir
+
+def set_input_directory(input_dir: str) -> None:
+    global input_directory
+    input_directory = input_dir
+
+def get_output_directory() -> str:
+    global output_directory
+    return output_directory
+
+def get_temp_directory() -> str:
+    global temp_directory
+    return temp_directory
+
+def get_input_directory() -> str:
+    global input_directory
+    return input_directory
+
+def get_user_directory() -> str:
+    return user_directory
+
+def set_user_directory(user_dir: str) -> None:
+    global user_directory
+    user_directory = user_dir
+
+
+#NOTE: used in http server so don't put folders that should not be accessed remotely
+def get_directory_by_type(type_name: str) -> str | None:
+    if type_name == "output":
+        return get_output_directory()
+    if type_name == "temp":
+        return get_temp_directory()
+    if type_name == "input":
+        return get_input_directory()
+    return None
+
+def filter_files_content_types(files: list[str], content_types: List[Literal["image", "video", "audio", "model"]]) -> list[str]:
     """
+    Example:
+        files = os.listdir(folder_paths.get_input_directory())
+        videos = filter_files_content_types(files, ["video"])
+
+    Note:
+        - 'model' in MIME context refers to 3D models, not files containing trained weights and parameters
+    """
+    global extension_mimetypes_cache
+    result = []
+    for file in files:
+        extension = file.split('.')[-1]
+        if extension not in extension_mimetypes_cache:
+            mime_type, _ = mimetypes.guess_type(file, strict=False)
+            if not mime_type:
+                continue
+            content_type = mime_type.split('/')[0]
+            extension_mimetypes_cache[extension] = content_type
+        else:
+            content_type = extension_mimetypes_cache[extension]
+
+        if content_type in content_types:
+            result.append(file)
+    return result
+
+# determine base_dir rely on annotation if name is 'filename.ext [annotation]' format
+# otherwise use default_path as base_dir
+def annotated_filepath(name: str) -> tuple[str, str | None]:
+    if name.endswith("[output]"):
+        base_dir = get_output_directory()
+        name = name[:-9]
+    elif name.endswith("[input]"):
+        base_dir = get_input_directory()
+        name = name[:-8]
+    elif name.endswith("[temp]"):
+        base_dir = get_temp_directory()
+        name = name[:-7]
+    else:
+        return name, None
+
+    return name, base_dir
+
+
+def get_annotated_filepath(name: str, default_dir: str | None=None) -> str:
+    name, base_dir = annotated_filepath(name)
+
+    if base_dir is None:
+        if default_dir is not None:
+            base_dir = default_dir
+        else:
+            base_dir = get_input_directory()  # fallback path
+
+    return os.path.join(base_dir, name)
+
+
+def exists_annotated_filepath(name) -> bool:
+    name, base_dir = annotated_filepath(name)
+
+    if base_dir is None:
+        base_dir = get_input_directory()  # fallback path
+
+    filepath = os.path.join(base_dir, name)
+    return os.path.exists(filepath)
+
+
+def add_model_folder_path(folder_name: str, full_folder_path: str, is_default: bool = False) -> None:
     global folder_names_and_paths
+    folder_name = map_legacy(folder_name)
     if folder_name in folder_names_and_paths:
-        folder_names_and_paths[folder_name][0].append(full_folder_path)
-        log.info(f"Added additional path for {folder_name}: {full_folder_path}")
+        paths, _exts = folder_names_and_paths[folder_name]
+        if full_folder_path in paths:
+            if is_default and paths[0] != full_folder_path:
+                # If the path to the folder is not the first in the list, move it to the beginning.
+                paths.remove(full_folder_path)
+                paths.insert(0, full_folder_path)
+        else:
+            if is_default:
+                paths.insert(0, full_folder_path)
+            else:
+                paths.append(full_folder_path)
     else:
         folder_names_and_paths[folder_name] = ([full_folder_path], set())
-        log.info(
-            f"Created new model folder type {folder_name} with path: {full_folder_path}"
-        )
-
 
 def get_folder_paths(folder_name: str) -> list[str]:
-    """
-    Get the folder paths for a specific model type.
-
-    Args:
-        folder_name (str): The name of the model type.
-
-    Returns:
-        list[str]: The list of folder paths for the specified model type.
-    """
+    folder_name = map_legacy(folder_name)
     return folder_names_and_paths[folder_name][0][:]
 
-
-def recursive_search(
-    directory: str, excluded_dir_names: Optional[list[str]] = None
-) -> tuple[list[str], dict[str, float]]:
-    """
-    Recursively search for files in a directory and its subdirectories.
-
-    Args:
-        directory (str): The directory to search.
-        excluded_dir_names (Optional[list[str]], optional): A list of directory names to exclude from the search. Defaults to None.
-
-    Returns:
-        tuple[list[str], dict[str, float]]: A tuple containing the list of file paths and a dictionary of directory paths and their modification times.
-    """
+def recursive_search(directory: str, excluded_dir_names: list[str] | None=None) -> tuple[list[str], dict[str, float]]:
     if not os.path.isdir(directory):
-        log.warning(f"Directory does not exist or is not accessible: {directory}")
         return [], {}
 
-    log.debug(f"Starting recursive search in: {directory}")
     if excluded_dir_names is None:
         excluded_dir_names = []
 
-    result: list[str] = []
-    dirs: dict[str, float] = {directory: os.path.getmtime(directory)}
+    result = []
+    dirs = {}
 
+    # Attempt to add the initial directory to dirs with error handling
     try:
-        for dirpath, subdirs, filenames in os.walk(
-            directory, followlinks=True, topdown=True
-        ):
-            subdirs[:] = [d for d in subdirs if d not in excluded_dir_names]
-            for file_name in filenames:
-                relative_path = os.path.relpath(
-                    os.path.join(dirpath, file_name), directory
-                )
-                result.append(relative_path)
-            for d in subdirs:
-                path = os.path.join(dirpath, d)
-                dirs[path] = os.path.getmtime(path)
-    except Exception as e:
-        log.error(f"Error during recursive search in {directory}: {str(e)}")
-        raise
+        dirs[directory] = os.path.getmtime(directory)
+    except FileNotFoundError:
+        logging.warning(f"Warning: Unable to access {directory}. Skipping this path.")
 
-    log.debug(f"Completed recursive search in {directory}. Found {len(result)} files")
+    logging.debug("recursive file list on directory {}".format(directory))
+    dirpath: str
+    subdirs: list[str]
+    filenames: list[str]
+
+    for dirpath, subdirs, filenames in os.walk(directory, followlinks=True, topdown=True):
+        subdirs[:] = [d for d in subdirs if d not in excluded_dir_names]
+        for file_name in filenames:
+            try:
+                relative_path = os.path.relpath(os.path.join(dirpath, file_name), directory)
+                result.append(relative_path)
+            except:
+                logging.warning(f"Warning: Unable to access {file_name}. Skipping this file.")
+                continue
+
+        for d in subdirs:
+            path: str = os.path.join(dirpath, d)
+            try:
+                dirs[path] = os.path.getmtime(path)
+            except FileNotFoundError:
+                logging.warning(f"Warning: Unable to access {path}. Skipping this path.")
+                continue
+    logging.debug("found {} files".format(len(result)))
     return result, dirs
 
+def filter_files_extensions(files: Collection[str], extensions: Collection[str]) -> list[str]:
+    return sorted(list(filter(lambda a: os.path.splitext(a)[-1].lower() in extensions or len(extensions) == 0, files)))
 
-def filter_files_extensions(files: list[str], extensions: list[str]) -> list[str]:
-    """
-    Filter a list of file paths based on their extensions.
-
-    Args:
-        files (list[str]): The list of file paths.
-        extensions (list[str]): The list of allowed extensions.
-
-    Returns:
-        list[str]: The filtered list of file paths.
-    """
-    return sorted(
-        list(
-            filter(
-                lambda a: os.path.splitext(a)[-1].lower() in extensions
-                or len(extensions) == 0,
-                files,
-            )
-        )
-    )
 
 
 def get_full_path(folder_name: str, filename: str) -> str | None:
     """
-    Get the full path of a file given its folder name and filename.
-
-    Args:
-        folder_name (str): The name of the folder.
-        filename (str): The name of the file.
-
-    Returns:
-        str | None: The full path of the file if found, None otherwise.
+    Get the full path of a file in a folder, has to be a file
     """
     global folder_names_and_paths
+    folder_name = map_legacy(folder_name)
     if folder_name not in folder_names_and_paths:
-        log.warning(f"Attempted to access non-existent folder type: {folder_name}")
         return None
-
     folders = folder_names_and_paths[folder_name]
     filename = os.path.relpath(os.path.join("/", filename), "/")
     for x in folders[0]:
         full_path = os.path.join(x, filename)
         if os.path.isfile(full_path):
-            log.debug(f"Found file {filename} in {folder_name} at: {full_path}")
             return full_path
+        elif os.path.islink(full_path):
+            logging.warning("WARNING path {} exists but doesn't link anywhere, skipping.".format(full_path))
 
-    log.warning(f"File {filename} not found in any {folder_name} directories")
     return None
 
 
 def get_full_path_or_raise(folder_name: str, filename: str) -> str:
-    if filename.startswith("/"):
-        log.debug(f"Using absolute path: {filename}")
-        return filename
+    """
+    Get the full path of a file in a folder, has to be a file
+    """
     full_path = get_full_path(folder_name, filename)
     if full_path is None:
-        error_msg = (
-            f"Model in folder '{folder_name}' with filename '{filename}' not found."
-        )
-        log.error(error_msg)
-        raise FileNotFoundError(error_msg)
+        raise FileNotFoundError(f"Model in folder '{folder_name}' with filename '{filename}' not found.")
     return full_path
 
 
 def get_filename_list_(folder_name: str) -> tuple[list[str], dict[str, float], float]:
-    """
-    Get the list of filenames and folder modification times for a specific folder.
-
-    Args:
-        folder_name (str): The name of the folder.
-
-    Returns:
-        tuple[list[str], dict[str, float], float]: A tuple containing the list of filenames,
-        a dictionary of folder paths and their modification times, and the current time.
-    """
+    folder_name = map_legacy(folder_name)
     global folder_names_and_paths
-    output_list: set[str] = set()
+    output_list = set()
     folders = folder_names_and_paths[folder_name]
-    output_folders: dict[str, float] = {}
-
-    log.debug(f"Scanning files in {folder_name} directories")
-
+    output_folders = {}
     for x in folders[0]:
-        if not os.path.exists(x):
-            log.warning(f"Directory does not exist: {x}")
-            continue
-
         files, folders_all = recursive_search(x, excluded_dir_names=[".git"])
-        filtered_files = filter_files_extensions(files, list(folders[1]))
-        output_list.update(filtered_files)
+        output_list.update(filter_files_extensions(files, folders[1]))
         output_folders = {**output_folders, **folders_all}
-        log.debug(f"Found {len(filtered_files)} files in {x}")
 
-    result = (sorted(list(output_list)), output_folders, time.perf_counter())
-    log.info(f"Total files found for {folder_name}: {len(result[0])}")
-    return result
+    return sorted(list(output_list)), output_folders, time.perf_counter()
 
+def cached_filename_list_(folder_name: str) -> tuple[list[str], dict[str, float], float] | None:
+    strong_cache = cache_helper.get(folder_name)
+    if strong_cache is not None:
+        return strong_cache
 
-def cached_filename_list_(
-    folder_name: str,
-) -> Optional[tuple[list[str], dict[str, float], float]]:
-    """
-    Get the cached list of filenames and folder modification times for a
-    Args:
-        folder_name (str): The name of the folder.
-
-    Returns:
-        Optional[Tuple[List[str], Dict[str, float], float]]: A tuple containing the cached list of filenames, a dictionary of folder paths and their modification times, and the cache timestamp if available, None otherwise.
-    """
     global filename_list_cache
     global folder_names_and_paths
+    folder_name = map_legacy(folder_name)
     if folder_name not in filename_list_cache:
         return None
     out = filename_list_cache[folder_name]
-    if time.perf_counter() < (out[2] + 0.5):
-        return out
+
     for x in out[1]:
         time_modified = out[1][x]
         folder = x
@@ -305,51 +348,82 @@ def cached_filename_list_(
 
     return out
 
-
-FOLDER_NAME_MAP = {
-    "comfy.checkpoint_file": "checkpoints",
-    "comfy.unet_file": "unet",
-    "comfy.vae_file": "vae",
-    "comfy.clip_file": "clip",
-    "comfy.unclip_file": "unclip",
-    "comfy.controlnet_file": "controlnet",
-    "comfy.t2i_adapter_file": "t2i_adapter",
-    "comfy.clip_vision_file": "clip_vision",
-    "comfy.lora_file": "loras",
-    "comfy.ip_adapter_file": "ip_adapter",
-    "comfy.upscale_model_file": "upscale_models",
-    "comfy.vae_approx_file": "vae_approx",
-    "comfy.hypernetwork_file": "hypernetworks",
-    "comfy.embedding_file": "embeddings",
-    "comfy.style_model_file": "style_models",
-    "comfy.instant_id_file": "instantid",
-    "comfy.gligen_file": "gligen",
-}
-
-
-def normalize_folder_name(folder_name: str) -> str:
-    """
-    Normalize by mapping type names to folder names.
-    """
-    if folder_name.startswith("comfy."):
-        return FOLDER_NAME_MAP.get(folder_name, folder_name)
-    return folder_name
-
-
-def get_filename_list(folder_name):
-    """
-    Get the list of filenames for a specific folder, using the cache if available.
-
-    Args:
-        folder_name (str): The name of the folder.
-
-    Returns:
-        list[str]: The list of filenames for the specified folder.
-    """
-    folder_name = normalize_folder_name(folder_name)
+def get_filename_list(folder_name: str) -> list[str]:
+    folder_name = map_legacy(folder_name)
     out = cached_filename_list_(folder_name)
     if out is None:
         out = get_filename_list_(folder_name)
         global filename_list_cache
         filename_list_cache[folder_name] = out
+    cache_helper.set(folder_name, out)
     return list(out[0])
+
+def get_save_image_path(filename_prefix: str, output_dir: str, image_width=0, image_height=0) -> tuple[str, str, int, str, str]:
+    def map_filename(filename: str) -> tuple[int, str]:
+        prefix_len = len(os.path.basename(filename_prefix))
+        prefix = filename[:prefix_len + 1]
+        try:
+            digits = int(filename[prefix_len + 1:].split('_')[0])
+        except:
+            digits = 0
+        return digits, prefix
+
+    def compute_vars(input: str, image_width: int, image_height: int) -> str:
+        input = input.replace("%width%", str(image_width))
+        input = input.replace("%height%", str(image_height))
+        now = time.localtime()
+        input = input.replace("%year%", str(now.tm_year))
+        input = input.replace("%month%", str(now.tm_mon).zfill(2))
+        input = input.replace("%day%", str(now.tm_mday).zfill(2))
+        input = input.replace("%hour%", str(now.tm_hour).zfill(2))
+        input = input.replace("%minute%", str(now.tm_min).zfill(2))
+        input = input.replace("%second%", str(now.tm_sec).zfill(2))
+        return input
+
+    if "%" in filename_prefix:
+        filename_prefix = compute_vars(filename_prefix, image_width, image_height)
+
+    subfolder = os.path.dirname(os.path.normpath(filename_prefix))
+    filename = os.path.basename(os.path.normpath(filename_prefix))
+
+    full_output_folder = os.path.join(output_dir, subfolder)
+
+    if os.path.commonpath((output_dir, os.path.abspath(full_output_folder))) != output_dir:
+        err = "**** ERROR: Saving image outside the output folder is not allowed." + \
+              "\n full_output_folder: " + os.path.abspath(full_output_folder) + \
+              "\n         output_dir: " + output_dir + \
+              "\n         commonpath: " + os.path.commonpath((output_dir, os.path.abspath(full_output_folder)))
+        logging.error(err)
+        raise Exception(err)
+
+    try:
+        counter = max(filter(lambda a: os.path.normcase(a[1][:-1]) == os.path.normcase(filename) and a[1][-1] == "_", map(map_filename, os.listdir(full_output_folder))))[0] + 1
+    except ValueError:
+        counter = 1
+    except FileNotFoundError:
+        os.makedirs(full_output_folder, exist_ok=True)
+        counter = 1
+    return full_output_folder, filename, counter, subfolder, filename_prefix
+
+def get_input_subfolders() -> list[str]:
+    """Returns a list of all subfolder paths in the input directory, recursively.
+
+    Returns:
+        List of folder paths relative to the input directory, excluding the root directory
+    """
+    input_dir = get_input_directory()
+    folders = []
+
+    try:
+        if not os.path.exists(input_dir):
+            return []
+
+        for root, dirs, _ in os.walk(input_dir):
+            rel_path = os.path.relpath(root, input_dir)
+            if rel_path != ".":  # Only include non-root directories
+                # Normalize path separators to forward slashes
+                folders.append(rel_path.replace(os.sep, '/'))
+
+        return sorted(folders)
+    except FileNotFoundError:
+        return []

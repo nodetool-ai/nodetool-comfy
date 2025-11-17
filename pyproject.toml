@@ -1,53 +1,71 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry]
+[project]
 name = "nodetool-comfy"
-version = "0.6.0"
+version = "0.6.2-rc.6"
 description = "ComfyUI nodes for Nodetool"
 readme = "README.md"
-authors = ["Matthias Georgi <matti.georgi@gmail.com>"]
-packages = [
-  { include = "nodetool", from = "src" },
-  { include = "comfy", from = "src" },
-  { include = "comfy_custom_nodes", from = "src" },
-  { include = "comfy_extras", from = "src" },
-  { include = "folder_paths.py", from = "src" },
-  { include = "latent_preview.py", from = "src" },
-  { include = "node_helpers.py", from = "src" },
-  { include = "nodes.py", from = "src" },
+authors = [{ name = "Matthias Georgi", email = "matti.georgi@gmail.com" }]
+requires-python = ">=3.10.13"
+
+dependencies = [
+  "nodetool-core==0.6.2rc4",
+  "torch==2.8.0",
+  "torchsde",
+  "torchvision",
+  "torchaudio",
+  "einops>=0.8.0",
+  "kornia>=0.7.4",
+  "omegaconf>=2.3.0",
+  "spandrel>=0.4.0",
+  "transformers>=4.48.1",
+  "tokenizers>=0.13.3",
+  "sentencepiece",
+  "safetensors>=0.4.5",
+  "aiohttp>=3.11.2",
+  "yarl>=1.18.0",
+  "pyyaml>=6.0.2",
+  "Pillow>=11.0.0",
+  "scipy>=1.14.1",
+  "trimesh>=3.21.1",
+  "tqdm>=4.67.0",
+  "psutil>=6.1.0",
+  "xformers==0.0.32.post2",
+  "yacs>=0.1.8",
+  "yapf>=0.40.2",
+  "fvcore>=0.1.5.post20221221",
 ]
-package-mode = true
-include = ["src/nodetool/package-metadata/nodetool-comfy.json"]
+
+[project.urls]
 repository = "https://github.com/nodetool-ai/nodetool-comfy"
 
-[tool.poetry.dependencies]
-python = "^3.10"
-nodetool-core = { git = "https://github.com/nodetool-ai/nodetool-core.git", rev = "main" }
-torch = "2.4.1"
-torchsde = "0.2.6"
-torchvision = "0.19.1"
-torchaudio = "2.4.1"
-numpy = "1.26.4"
-einops = "0.8.0"
-kornia = "0.7.4"
-omegaconf = "2.3.0"
-spandrel = "0.4.0"
-transformers = "4.48.1"
-tokenizers = ">=0.13.3"
-sentencepiece = "0.2.0"
-safetensors = "0.4.5"
-aiohttp = "3.11.2"
-yarl = ">=1.18.0"
-pyyaml = "6.0.2"
-Pillow = "11.0.0"
-scipy = "1.14.1"
-trimesh = "3.21.1"
-tqdm = "4.67.0"
-psutil = "6.1.0"
-yacs = "0.1.8"
-yapf = "0.40.2"
-fvcore = "0.1.5.post20221221"
-protobuf = "*"
-wheel = "0.44.0"
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = [
+  "src/nodetool",
+  "src/comfy",
+  "src/comfy_api",
+  "src/comfy_extras",
+  "src/comfy_config",
+  "src/comfy_execution",
+  "src/custom_nodes",
+  "src/folder_paths.py",
+  "src/latent_preview.py",
+  "src/nodes.py",
+  "src/node_helpers.py",
+  "src/protocol.py",
+]
+artifacts = [
+  "src/nodetool/package_metadata/nodetool-comfy.json",
+  "package_metadata/nodetool-comfy.json",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+nodetool = ["package_metadata/nodetool-comfy.json"]
