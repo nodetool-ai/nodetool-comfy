@@ -193,10 +193,10 @@ class StableDiffusion(BaseNode):
         )
 
     async def process(self, context: ProcessingContext) -> ImageRef:
-        with comfy_progress(context, self):
-            if self._model is None or self._clip is None or self._vae is None:
-                raise RuntimeError("Model components must be loaded before processing.")
+        if self._model is None or self._clip is None or self._vae is None:
+            raise RuntimeError("Model components must be loaded before processing.")
 
+        with comfy_progress(context, self, self._model):
             unet = ModelPatcher.clone(self._model)
             clip = self._clip.clone()
             vae = self._vae
@@ -437,11 +437,12 @@ class Flux(BaseNode):
             )
 
     async def process(self, context: ProcessingContext) -> ImageRef:
-        with comfy_progress(context, self):
-            latent = EmptySD3LatentImage().generate(self.width, self.height, 1)[0]
+        assert self._model is not None, "Model must be loaded."
+        assert self._clip is not None, "CLIP must be loaded."
+        assert self._vae is not None, "VAE must be loaded."
 
-            assert self._clip is not None, "CLIP must be loaded."
-            assert self._vae is not None, "VAE must be loaded."
+        with comfy_progress(context, self, self._model):
+            latent = EmptySD3LatentImage().generate(self.width, self.height, 1)[0]
 
             positive = CLIPTextEncode().encode(self._clip, self.prompt)[0]
             negative = CLIPTextEncode().encode(self._clip, self.negative_prompt)[0]

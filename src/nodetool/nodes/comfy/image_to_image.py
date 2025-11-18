@@ -134,25 +134,25 @@ class StableDiffusionImageToImage(TextToImageSD):
         return VAEEncode().encode(vae, input_tensor)[0]
 
     async def process(self, context: ProcessingContext) -> ImageRef:
-        with comfy_progress(context, self):
-            if self.model.is_empty():
-                raise ValueError("Model repository ID must be selected.")
+        if self.model.is_empty():
+            raise ValueError("Model repository ID must be selected.")
 
-            assert self.model.path is not None, "Model path must be set."
+        assert self.model.path is not None, "Model path must be set."
 
-            ckpt_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
+        ckpt_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
 
-            unet, clip, vae, _ = comfy.sd.load_checkpoint_guess_config(
-                ckpt_path,
-                output_vae=True,
-                output_clip=True,
-                embedding_directory=folder_paths.get_folder_paths("embeddings"),
-            )
+        unet, clip, vae, _ = comfy.sd.load_checkpoint_guess_config(
+            ckpt_path,
+            output_vae=True,
+            output_clip=True,
+            embedding_directory=folder_paths.get_folder_paths("embeddings"),
+        )
 
-            assert unet is not None, "UNet must be loaded."
-            assert clip is not None, "CLIP must be loaded."
-            assert vae is not None, "VAE must be loaded."
+        assert unet is not None, "UNet must be loaded."
+        assert clip is not None, "CLIP must be loaded."
+        assert vae is not None, "VAE must be loaded."
 
+        with comfy_progress(context, self, unet):
             unet, clip = self.apply_loras(unet, clip)
             positive_conditioning, negative_conditioning = self.get_conditioning(clip)
 
@@ -361,7 +361,7 @@ class FluxKontext(BaseNode):
         sd = comfy.utils.load_torch_file(vae_path)
         vae = comfy.sd.VAE(sd=sd)
 
-        with comfy_progress(context, self):
+        with comfy_progress(context, self, model):
             # Convert input image to tensor (BHWC in [0,1]) and scale it with FluxKontextImageScale.
             input_pil = await context.image_to_pil(self.input_image)
             image = np.array(input_pil.convert("RGB")).astype(np.float32) / 255.0
@@ -479,25 +479,25 @@ class ControlNet(StableDiffusionImageToImage):
         return conditioning
 
     async def process(self, context: ProcessingContext) -> ImageRef:
-        with comfy_progress(context, self):
-            if self.model.is_empty():
-                raise ValueError("Model repository ID must be selected.")
+        if self.model.is_empty():
+            raise ValueError("Model repository ID must be selected.")
 
-            assert self.model.path is not None, "Model path must be set."
+        assert self.model.path is not None, "Model path must be set."
 
-            ckpt_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
+        ckpt_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
 
-            unet, clip, vae, _ = comfy.sd.load_checkpoint_guess_config(
-                ckpt_path,
-                output_vae=True,
-                output_clip=True,
-                embedding_directory=folder_paths.get_folder_paths("embeddings"),
-            )
+        unet, clip, vae, _ = comfy.sd.load_checkpoint_guess_config(
+            ckpt_path,
+            output_vae=True,
+            output_clip=True,
+            embedding_directory=folder_paths.get_folder_paths("embeddings"),
+        )
 
-            assert unet is not None, "UNet must be loaded."
-            assert clip is not None, "CLIP must be loaded."
-            assert vae is not None, "VAE must be loaded."
+        assert unet is not None, "UNet must be loaded."
+        assert clip is not None, "CLIP must be loaded."
+        assert vae is not None, "VAE must be loaded."
 
+        with comfy_progress(context, self, unet):
             positive_conditioning, negative_conditioning = self.get_conditioning(clip)
 
             if self.width >= 1024 and self.height >= 1024:
