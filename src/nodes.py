@@ -801,7 +801,14 @@ class ControlNetLoader:
     CATEGORY = "loaders"
 
     def load_controlnet(self, control_net_name):
-        controlnet_path = folder_paths.get_full_path_or_raise("controlnet", control_net_name)
+        if os.path.isfile(control_net_name):
+            controlnet_path = control_net_name
+        elif os.path.isdir(control_net_name):
+            controlnet_path = folder_paths.get_full_path_or_raise("controlnet", control_net_name)
+        else:
+            controlnet_path = folder_paths.get_full_path_or_raise(
+                "controlnet", os.path.basename(control_net_name)
+            )
         controlnet = comfy.controlnet.load_controlnet(controlnet_path)
         if controlnet is None:
             raise RuntimeError("ERROR: controlnet file is invalid and does not contain a valid controlnet model.")
@@ -819,7 +826,10 @@ class DiffControlNetLoader:
     CATEGORY = "loaders"
 
     def load_controlnet(self, model, control_net_name):
-        controlnet_path = folder_paths.get_full_path_or_raise("controlnet", control_net_name)
+        if os.path.isfile(control_net_name):
+            controlnet_path = control_net_name
+        else:
+            controlnet_path = folder_paths.get_full_path_or_raise("controlnet", control_net_name)
         controlnet = comfy.controlnet.load_controlnet(controlnet_path, model)
         return (controlnet,)
 

@@ -33,7 +33,7 @@ from nodetool.nodes.comfy.constants import (
     HF_STABLE_DIFFUSION_XL_MODELS,
 )
 from nodetool.nodes.comfy.enums import Sampler, Scheduler
-from nodetool.nodes.comfy.utils import comfy_progress, unload_comfy_model
+from nodetool.nodes.comfy.utils import comfy_progress
 from nodetool.workflows.base_node import BaseNode
 from nodetool.workflows.processing_context import ProcessingContext
 from pydantic import Field
@@ -79,6 +79,9 @@ class StableDiffusion(BaseNode):
         default=[],
         description="List of LoRA models to apply",
     )
+    _model: ModelPatcher | None = None
+    _clip: comfy.sd.CLIP | None = None
+    _vae: comfy.sd.VAE | None = None
 
     @classmethod
     def get_recommended_models(cls) -> list[HFTextToImage]:
@@ -115,6 +118,9 @@ class StableDiffusion(BaseNode):
             )  # type: ignore[assignment]
         return unet, clip
 
+    def get_empty_latent(self, width: int, height: int):
+        return EmptyLatentImage().generate(width, height, 1)[0]
+
     def get_conditioning(self, clip: comfy.sd.CLIP) -> Tuple[list, list]:
         positive_conditioning = CLIPTextEncode().encode(clip, self.prompt)[0]
         negative_conditioning = CLIPTextEncode().encode(clip, self.negative_prompt)[0]
@@ -134,25 +140,66 @@ class StableDiffusion(BaseNode):
             denoise=1.0,
         )[0]
 
-    async def process(self, context: ProcessingContext) -> ImageRef:
-        with comfy_progress(context, self):
-            if self.model.is_empty():
-                raise ValueError("Model repository ID must be selected.")
+    async def preload_model(self, context: ProcessingContext):
+        if self.model.is_empty():
+            raise ValueError("Model repository ID must be selected.")
 
-            assert self.model.path is not None, "Model path must be set."
+        assert self.model.path is not None, "Model path must be set."
 
-            ckpt_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
+        self._model = ModelManager.get_model(self.model.repo_id, "unet", self.model.path)
+        self._clip = ModelManager.get_model(self.model.repo_id, "clip", self.model.path)
+        self._vae = ModelManager.get_model(self.model.repo_id, "vae", self.model.path)
 
-            unet, clip, vae, _ = comfy.sd.load_checkpoint_guess_config(
-                ckpt_path,
-                output_vae=True,
-                output_clip=True,
-                embedding_directory=folder_paths.get_folder_paths("embeddings"),
+        if self._model and self._clip and self._vae:
+            return
+
+        cache_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
+        if cache_path is None:
+            raise ValueError(
+                f"Model checkpoint not found for {self.model.repo_id}/{self.model.path}"
             )
 
-            assert unet is not None, "UNet must be loaded."
-            assert clip is not None, "CLIP must be loaded."
-            assert vae is not None, "VAE must be loaded."
+        self._model, self._clip, self._vae, _ = comfy.sd.load_checkpoint_guess_config(
+            cache_path,
+            output_vae=True,
+            output_clip=True,
+            embedding_directory=folder_paths.get_folder_paths("embeddings"),
+        )
+
+        assert self._model is not None, "UNet must be loaded."
+        assert self._clip is not None, "CLIP must be loaded."
+        assert self._vae is not None, "VAE must be loaded."
+
+        ModelManager.set_model(
+            self.id,
+            self.model.repo_id,
+            "unet",
+            self._model,
+            self.model.path,
+        )
+        ModelManager.set_model(
+            self.id,
+            self.model.repo_id,
+            "clip",
+            self._clip,
+            self.model.path,
+        )
+        ModelManager.set_model(
+            self.id,
+            self.model.repo_id,
+            "vae",
+            self._vae,
+            self.model.path,
+        )
+
+    async def process(self, context: ProcessingContext) -> ImageRef:
+        with comfy_progress(context, self):
+            if self._model is None or self._clip is None or self._vae is None:
+                raise RuntimeError("Model components must be loaded before processing.")
+
+            unet = ModelPatcher.clone(self._model)
+            clip = self._clip.clone()
+            vae = self._vae
 
             unet, clip = self.apply_loras(unet, clip)
             positive_conditioning, negative_conditioning = self.get_conditioning(clip)
@@ -170,7 +217,7 @@ class StableDiffusion(BaseNode):
                 num_lowres_steps = self.num_inference_steps
                 initial_width, initial_height = self.width, self.height
 
-            latent = EmptyLatentImage().generate(initial_width, initial_height, 1)[0]
+            latent = self.get_empty_latent(initial_width, initial_height)
 
             sampled_latent = self.sample(
                 unet,
@@ -196,8 +243,6 @@ class StableDiffusion(BaseNode):
                     negative_conditioning,
                     num_hires_steps,
                 )
-
-            unload_comfy_model(unet)
 
             decoded_image = VAEDecodeTiled().decode(vae, sampled_latent, 512)[0]
             return await context.image_from_tensor(decoded_image)
@@ -245,75 +290,6 @@ class StableDiffusion3(StableDiffusion):
     def get_empty_latent(self, width: int, height: int):
         return EmptySD3LatentImage().generate(width, height, 1)[0]
 
-    async def process(self, context: ProcessingContext) -> ImageRef:
-        # Reuse StableDiffusion.process but override the latent creation to
-        # use the SD3 latent space.
-        with comfy_progress(context, self):
-            if self.model.is_empty():
-                raise ValueError("Model repository ID must be selected.")
-
-            assert self.model.path is not None, "Model path must be set."
-
-            ckpt_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
-
-            unet, clip, vae, _ = comfy.sd.load_checkpoint_guess_config(
-                ckpt_path,
-                output_vae=True,
-                output_clip=True,
-                embedding_directory=folder_paths.get_folder_paths("embeddings"),
-            )
-
-            assert unet is not None, "UNet must be loaded."
-            assert clip is not None, "CLIP must be loaded."
-            assert vae is not None, "VAE must be loaded."
-
-            unet, clip = self.apply_loras(unet, clip)
-            positive_conditioning, negative_conditioning = self.get_conditioning(clip)
-
-            if (
-                isinstance(self.model, HFTextToImage)
-                and self.width >= 1024
-                and self.height >= 1024
-            ):
-                num_lowres_steps = self.num_inference_steps // 4
-                num_hires_steps = self.num_inference_steps - num_lowres_steps
-                initial_width, initial_height = self.width // 2, self.height // 2
-            else:
-                num_hires_steps = 0
-                num_lowres_steps = self.num_inference_steps
-                initial_width, initial_height = self.width, self.height
-
-            latent = self.get_empty_latent(initial_width, initial_height)
-
-            sampled_latent = self.sample(
-                unet,
-                latent,
-                positive_conditioning,
-                negative_conditioning,
-                num_lowres_steps,
-            )
-
-            if num_hires_steps > 0:
-                hires_latent = LatentUpscale().upscale(
-                    samples=sampled_latent,
-                    upscale_method="bilinear",
-                    width=self.width,
-                    height=self.height,
-                    crop=False,
-                )[0]
-
-                sampled_latent = self.sample(
-                    unet,
-                    hires_latent,
-                    positive_conditioning,
-                    negative_conditioning,
-                    num_hires_steps,
-                )
-
-            unload_comfy_model(unet)
-
-            decoded_image = VAEDecodeTiled().decode(vae, sampled_latent, 512)[0]
-            return await context.image_from_tensor(decoded_image)
 
 
 class Flux(BaseNode):
@@ -489,8 +465,6 @@ class Flux(BaseNode):
                 latent_image=latent,
                 denoise=self.denoise,
             )[0]
-
-            # unload_comfy_model(self._model)
 
             decoded_image = VAEDecodeTiled().decode(self._vae, sampled_latent, 512)[0]
             return await context.image_from_tensor(decoded_image)
