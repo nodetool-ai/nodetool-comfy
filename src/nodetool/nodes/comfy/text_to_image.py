@@ -146,7 +146,9 @@ class StableDiffusion(BaseNode):
 
         assert self.model.path is not None, "Model path must be set."
 
-        self._model = ModelManager.get_model(self.model.repo_id, "unet", self.model.path)
+        self._model = ModelManager.get_model(
+            self.model.repo_id, "unet", self.model.path
+        )
         self._clip = ModelManager.get_model(self.model.repo_id, "clip", self.model.path)
         self._vae = ModelManager.get_model(self.model.repo_id, "vae", self.model.path)
 
@@ -289,7 +291,6 @@ class StableDiffusion3(StableDiffusion):
 
     def get_empty_latent(self, width: int, height: int):
         return EmptySD3LatentImage().generate(width, height, 1)[0]
-
 
 
 class Flux(BaseNode):

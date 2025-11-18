@@ -1,7 +1,7 @@
 {
   "name": "nodetool-comfy",
   "description": "ComfyUI nodes for Nodetool",
-  "version": "0.6.2rc4",
+  "version": "0.6.2-rc.6",
   "authors": [
     "Matthias Georgi <matti.georgi@gmail.com>"
   ],
@@ -285,7 +285,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 14209,
+          "downloads": 14306,
           "likes": 52
         },
         {
@@ -311,7 +311,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 30941,
+          "downloads": 31232,
           "likes": 130
         },
         {
@@ -337,7 +337,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 10872,
+          "downloads": 10955,
           "likes": 17
         },
         {
@@ -363,7 +363,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 8924,
+          "downloads": 9018,
           "likes": 72
         },
         {
@@ -389,7 +389,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 7183,
+          "downloads": 7218,
           "likes": 29
         },
         {
@@ -415,8 +415,857 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 13283,
+          "downloads": 13247,
           "likes": 127
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:ip-adapter_sd15_plus.pth",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "ip-adapter_sd15_plus.pth",
+          "size_on_disk": 158030471,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:ip-adapter_sd15.pth",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "ip-adapter_sd15.pth",
+          "size_on_disk": 44642819,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:ioclab_sd15_recolor.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "ioclab_sd15_recolor.safetensors",
+          "size_on_disk": 722598616,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "diffusers/controlnet-canny-sdxl-1.0:diffusion_pytorch_model.fp16.safetensors",
+          "type": "hf.controlnet",
+          "name": "diffusers/controlnet-canny-sdxl-1.0",
+          "repo_id": "diffusers/controlnet-canny-sdxl-1.0",
+          "path": "diffusion_pytorch_model.fp16.safetensors",
+          "size_on_disk": 2502139136,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "diffusers",
+            "safetensors",
+            "stable-diffusion-xl",
+            "stable-diffusion-xl-diffusers",
+            "text-to-image",
+            "base_model:runwayml/stable-diffusion-v1-5",
+            "base_model:finetune:runwayml/stable-diffusion-v1-5",
+            "license:openrail++",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 10504,
+          "likes": 518
+        },
+        {
+          "id": "diffusers/controlnet-depth-sdxl-1.0:diffusion_pytorch_model.fp16.safetensors",
+          "type": "hf.controlnet",
+          "name": "diffusers/controlnet-depth-sdxl-1.0",
+          "repo_id": "diffusers/controlnet-depth-sdxl-1.0",
+          "path": "diffusion_pytorch_model.fp16.safetensors",
+          "size_on_disk": 2502139134,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "diffusers",
+            "safetensors",
+            "stable-diffusion-xl",
+            "stable-diffusion-xl-diffusers",
+            "text-to-image",
+            "controlnet",
+            "base_model:stabilityai/stable-diffusion-xl-base-1.0",
+            "base_model:adapter:stabilityai/stable-diffusion-xl-base-1.0",
+            "license:openrail++",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 17348,
+          "likes": 190
+        },
+        {
+          "id": "diffusers/controlnet-zoe-depth-sdxl-1.0:diffusion_pytorch_model.fp16.safetensors",
+          "type": "hf.controlnet",
+          "name": "diffusers/controlnet-zoe-depth-sdxl-1.0",
+          "repo_id": "diffusers/controlnet-zoe-depth-sdxl-1.0",
+          "path": "diffusion_pytorch_model.fp16.safetensors",
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "diffusers",
+            "safetensors",
+            "stable-diffusion-xl",
+            "stable-diffusion-xl-diffusers",
+            "text-to-image",
+            "controlnet",
+            "base_model:stabilityai/stable-diffusion-xl-base-1.0",
+            "base_model:adapter:stabilityai/stable-diffusion-xl-base-1.0",
+            "license:openrail++",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 784,
+          "likes": 39
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:diffusers_xl_canny_full.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "diffusers_xl_canny_full.safetensors",
+          "size_on_disk": 2502139104,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:diffusers_xl_canny_mid.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "diffusers_xl_canny_mid.safetensors",
+          "size_on_disk": 545197704,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:diffusers_xl_canny_small.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "diffusers_xl_canny_small.safetensors",
+          "size_on_disk": 320237152,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:diffusers_xl_depth_full.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "diffusers_xl_depth_full.safetensors",
+          "size_on_disk": 2502139104,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:diffusers_xl_depth_mid.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "diffusers_xl_depth_mid.safetensors",
+          "size_on_disk": 545197704,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:diffusers_xl_depth_small.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "diffusers_xl_depth_small.safetensors",
+          "size_on_disk": 320237152,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_canny.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "t2i-adapter_diffusers_xl_canny.safetensors",
+          "size_on_disk": 158060416,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_depth_midas.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "t2i-adapter_diffusers_xl_depth_midas.safetensors",
+          "size_on_disk": 158060416,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_depth_zoe.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "t2i-adapter_diffusers_xl_depth_zoe.safetensors",
+          "size_on_disk": 158060416,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_lineart.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "t2i-adapter_diffusers_xl_lineart.safetensors",
+          "size_on_disk": 158060416,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_openpose.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "t2i-adapter_diffusers_xl_openpose.safetensors",
+          "size_on_disk": 158060416,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_sketch.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "t2i-adapter_diffusers_xl_sketch.safetensors",
+          "size_on_disk": 158060416,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:t2i-adapter_xl_canny.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "t2i-adapter_xl_canny.safetensors",
+          "size_on_disk": 155110672,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:t2i-adapter_xl_openpose.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "t2i-adapter_xl_openpose.safetensors",
+          "size_on_disk": 158059792,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:t2i-adapter_xl_sketch.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "t2i-adapter_xl_sketch.safetensors",
+          "size_on_disk": 155110672,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:thibaud_xl_openpose.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "thibaud_xl_openpose.safetensors",
+          "size_on_disk": 2502139104,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:thibaud_xl_openpose_256lora.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "thibaud_xl_openpose_256lora.safetensors",
+          "size_on_disk": 774423040,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:sargezt_xl_depth_faid_vidit.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "sargezt_xl_depth_faid_vidit.safetensors",
+          "size_on_disk": 2502139104,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:sargezt_xl_depth_zeed.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "sargezt_xl_depth_zeed.safetensors",
+          "size_on_disk": 2502139104,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:sargezt_xl_depth.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "sargezt_xl_depth.safetensors",
+          "size_on_disk": 2502139104,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:sargezt_xl_softedge.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "sargezt_xl_softedge.safetensors",
+          "size_on_disk": 2502139104,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:ip-adapter_xl.pth",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "ip-adapter_xl.pth",
+          "size_on_disk": 702585021,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_depth_anime.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "kohya_controllllite_xl_depth_anime.safetensors",
+          "size_on_disk": 11321048,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_canny_anime.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "kohya_controllllite_xl_canny_anime.safetensors",
+          "size_on_disk": 46172168,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_scribble_anime.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "kohya_controllllite_xl_scribble_anime.safetensors",
+          "size_on_disk": 46172168,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_openpose_anime.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "kohya_controllllite_xl_openpose_anime.safetensors",
+          "size_on_disk": 46172168,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_openpose_anime_v2.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "kohya_controllllite_xl_openpose_anime_v2.safetensors",
+          "size_on_disk": 46172168,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_blur_anime_beta.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "kohya_controllllite_xl_blur_anime_beta.safetensors",
+          "size_on_disk": 22512816,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_blur.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "kohya_controllllite_xl_blur.safetensors",
+          "size_on_disk": 46172168,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_blur_anime.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "kohya_controllllite_xl_blur_anime.safetensors",
+          "size_on_disk": 46172168,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_canny.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "kohya_controllllite_xl_canny.safetensors",
+          "size_on_disk": 46172168,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_depth.safetensors",
+          "type": "hf.controlnet",
+          "name": "lllyasviel/sd_control_collection",
+          "repo_id": "lllyasviel/sd_control_collection",
+          "path": "kohya_controllllite_xl_depth.safetensors",
+          "size_on_disk": 46172168,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 2068
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_canny.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_canny.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_depth.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_depth.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_depth_V2.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_depth_V2.safetensors",
+          "size_on_disk": 223905112,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_dw_openpose.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_dw_openpose.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_lineart_anime_denoise.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_lineart_anime_denoise.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_mlsd_V2.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_mlsd_V2.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_normal.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_normal.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_normal_dsine.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_normal_dsine.safetensors",
+          "size_on_disk": 223905104,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_recolor_luminance.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_recolor_luminance.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_segment_animeface.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_segment_animeface.safetensors",
+          "size_on_disk": 223906696,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_segment_animeface_V2.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_segment_animeface_V2.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_sketch.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_sketch.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_softedge.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_softedge.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_t2i-adapter_color_shuffle.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_t2i-adapter_color_shuffle.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_tile_anime_alpha.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_tile_anime_alpha.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_tile_anime_beta.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_tile_anime_beta.safetensors",
+          "size_on_disk": 223906688,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
+        },
+        {
+          "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_tile_realistic.safetensors",
+          "type": "hf.controlnet",
+          "name": "bdsqlsz/qinglong_controlnet-lllite",
+          "repo_id": "bdsqlsz/qinglong_controlnet-lllite",
+          "path": "bdsqlsz_controlllite_xl_tile_realistic.safetensors",
+          "size_on_disk": 317085856,
+          "tags": [
+            "diffusers",
+            "onnx",
+            "license:cc-by-nc-sa-4.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 11388,
+          "likes": 335
         }
       ],
       "basic_fields": [
@@ -597,18 +1446,19 @@
       ],
       "recommended_models": [
         {
-          "id": "Comfy-Org/flux1-kontext-dev_ComfyUI:split_files/diffusion_modelsflux1-kontext-dev_ComfyUI.safetensors",
+          "id": "Comfy-Org/flux1-kontext-dev_ComfyUI:split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors",
           "type": "hf.image_to_image",
           "name": "Comfy-Org/flux1-kontext-dev_ComfyUI",
           "repo_id": "Comfy-Org/flux1-kontext-dev_ComfyUI",
-          "path": "split_files/diffusion_modelsflux1-kontext-dev_ComfyUI.safetensors",
+          "path": "split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors",
+          "size_on_disk": 11904640136,
           "tags": [
             "diffusion-single-file",
             "comfyui",
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 132526,
+          "downloads": 132136,
           "likes": 170
         },
         {
@@ -639,7 +1489,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 95621,
+          "downloads": 96260,
           "likes": 196
         },
         {
@@ -656,7 +1506,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 95621,
+          "downloads": 96260,
           "likes": 196
         }
       ],
@@ -901,7 +1751,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 95621,
+          "downloads": 96260,
           "likes": 196
         }
       ],
@@ -1161,7 +2011,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 336135,
+          "downloads": 334662,
           "likes": 992
         }
       ],
@@ -1419,11 +2269,12 @@
             "autotrain_compatible",
             "endpoints_compatible",
             "diffusers:StableDiffusionXLPipeline",
+            "deploy:azure",
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 2701435,
-          "likes": 7138
+          "downloads": 2729785,
+          "likes": 7139
         },
         {
           "id": "Lykon/dreamshaper-xl-v2-turbo:DreamShaperXL_Turbo_v2_1.safetensors",
@@ -1455,7 +2306,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 57847,
+          "downloads": 57803,
           "likes": 69
         },
         {
@@ -1490,7 +2341,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 305042,
+          "downloads": 306828,
           "likes": 268
         },
         {
@@ -1511,7 +2362,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 290910,
+          "downloads": 291372,
           "likes": 94
         },
         {
@@ -1551,7 +2402,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 256021,
+          "downloads": 267640,
           "likes": 0
         },
         {
@@ -1578,7 +2429,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 195157,
+          "downloads": 198773,
           "likes": 354
         },
         {
@@ -1599,7 +2450,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 51899,
+          "downloads": 51502,
           "likes": 115
         }
       ],
@@ -1969,7 +2820,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 95621,
+          "downloads": 96260,
           "likes": 196
         },
         {
@@ -1986,7 +2837,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 95621,
+          "downloads": 96260,
           "likes": 196
         },
         {
@@ -2003,7 +2854,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 312450,
+          "downloads": 327793,
           "likes": 578
         },
         {
@@ -2020,7 +2871,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 312450,
+          "downloads": 327793,
           "likes": 578
         },
         {
@@ -2037,7 +2888,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 245578,
+          "downloads": 242683,
           "likes": 241
         },
         {
@@ -2054,7 +2905,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 245578,
+          "downloads": 242683,
           "likes": 241
         }
       ],
@@ -2257,7 +3108,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 336135,
+          "downloads": 334662,
           "likes": 992
         }
       ],
@@ -2455,7 +3306,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 95621,
+          "downloads": 96260,
           "likes": 196
         }
       ],
@@ -2661,11 +3512,12 @@
             "autotrain_compatible",
             "endpoints_compatible",
             "diffusers:StableDiffusionXLPipeline",
+            "deploy:azure",
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 2701435,
-          "likes": 7138
+          "downloads": 2729785,
+          "likes": 7139
         },
         {
           "id": "Lykon/dreamshaper-xl-v2-turbo:DreamShaperXL_Turbo_v2_1.safetensors",
@@ -2697,7 +3549,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 57847,
+          "downloads": 57803,
           "likes": 69
         },
         {
@@ -2732,7 +3584,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 305042,
+          "downloads": 306828,
           "likes": 268
         },
         {
@@ -2753,7 +3605,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 290910,
+          "downloads": 291372,
           "likes": 94
         },
         {
@@ -2793,7 +3645,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 256021,
+          "downloads": 267640,
           "likes": 0
         },
         {
@@ -2820,7 +3672,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 195157,
+          "downloads": 198773,
           "likes": 354
         },
         {
@@ -2841,7 +3693,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 51899,
+          "downloads": 51502,
           "likes": 115
         }
       ],
