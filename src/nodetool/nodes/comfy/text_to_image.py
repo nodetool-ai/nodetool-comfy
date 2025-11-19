@@ -9,9 +9,9 @@ import folder_paths
 from comfy.model_patcher import ModelPatcher
 from comfy_extras.nodes_flux import FluxGuidance
 from comfy_extras.nodes_sd3 import EmptySD3LatentImage
-from custom_nodes.ComfyUI_GGUF.loader import gguf_sd_loader
-from custom_nodes.ComfyUI_GGUF.ops import GGMLOps
-from custom_nodes.ComfyUI_GGUF.nodes import GGUFModelPatcher
+from custom_nodes.gguf.loader import gguf_sd_loader
+from custom_nodes.gguf.ops import GGMLOps
+from custom_nodes.gguf.nodes import GGUFModelPatcher
 from huggingface_hub import try_to_load_from_cache
 from nodes import (
     CLIPTextEncode,
