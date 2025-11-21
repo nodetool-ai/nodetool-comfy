@@ -8,6 +8,1725 @@
   "repo_id": "",
   "nodes": [
     {
+      "title": "Flux",
+      "description": "Generates images from text prompts using the Flux model.\n    image, text-to-image, generative AI, flux\n\n    ComfyUI-native Flux implementation in the comfy.text_to_image namespace.",
+      "namespace": "comfy.text_to_image",
+      "node_type": "comfy.text_to_image.Flux",
+      "properties": [
+        {
+          "name": "unet_model",
+          "type": {
+            "type": "hf.text_to_image"
+          },
+          "default": {
+            "type": "hf.text_to_image",
+            "repo_id": "",
+            "path": null,
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Unet Model",
+          "description": "The UNet/diffusion model to use."
+        },
+        {
+          "name": "clip_model",
+          "type": {
+            "type": "hf.clip"
+          },
+          "default": {
+            "type": "hf.clip",
+            "repo_id": "Comfy-Org/stable-diffusion-3.5-fp8",
+            "path": "text_encoders/clip_l.safetensors",
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Clip Model",
+          "description": "The primary Flux CLIP checkpoint (clip-l)."
+        },
+        {
+          "name": "clip_model_secondary",
+          "type": {
+            "type": "hf.clip"
+          },
+          "default": {
+            "type": "hf.clip",
+            "repo_id": "Comfy-Org/stable-diffusion-3.5-fp8",
+            "path": "text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors",
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Clip Model Secondary",
+          "description": "The secondary Flux CLIP checkpoint (t5xxl)."
+        },
+        {
+          "name": "vae_model",
+          "type": {
+            "type": "hf.vae"
+          },
+          "default": {
+            "type": "hf.vae",
+            "repo_id": "ffxvs/vae-flux",
+            "path": "ae.safetensors",
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Vae Model",
+          "description": "The Flux VAE checkpoint."
+        },
+        {
+          "name": "prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Prompt",
+          "description": "The prompt to use."
+        },
+        {
+          "name": "negative_prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Negative Prompt",
+          "description": "The negative prompt to use."
+        },
+        {
+          "name": "width",
+          "type": {
+            "type": "int"
+          },
+          "default": 1024,
+          "title": "Width",
+          "min": 64.0,
+          "max": 2048.0
+        },
+        {
+          "name": "height",
+          "type": {
+            "type": "int"
+          },
+          "default": 1024,
+          "title": "Height",
+          "min": 64.0,
+          "max": 2048.0
+        },
+        {
+          "name": "steps",
+          "type": {
+            "type": "int"
+          },
+          "default": 20,
+          "title": "Steps",
+          "min": 1.0,
+          "max": 100.0
+        },
+        {
+          "name": "guidance_scale",
+          "type": {
+            "type": "float"
+          },
+          "default": 5.0,
+          "title": "Guidance Scale",
+          "min": 1.0,
+          "max": 30.0
+        },
+        {
+          "name": "seed",
+          "type": {
+            "type": "int"
+          },
+          "default": 0,
+          "title": "Seed",
+          "min": 0.0,
+          "max": 1000000000.0
+        },
+        {
+          "name": "denoise",
+          "type": {
+            "type": "float"
+          },
+          "default": 1.0,
+          "title": "Denoise",
+          "min": 0.0,
+          "max": 1.0
+        },
+        {
+          "name": "scheduler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "normal",
+              "karras",
+              "exponential",
+              "sgm_uniform",
+              "simple",
+              "ddim_uniform",
+              "beta",
+              "linear_quadratic"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Scheduler"
+          },
+          "default": "simple",
+          "title": "Scheduler"
+        },
+        {
+          "name": "sampler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "ddim",
+              "ddpm",
+              "dpm_2",
+              "dpm_2_ancestral",
+              "dpm_adaptive",
+              "dpm_fast",
+              "dpmpp_2m",
+              "dpmpp_2m_sde",
+              "dpmpp_2m_sde_gpu",
+              "dpmpp_2s_ancestral",
+              "dpmpp_3m_sde",
+              "dpmpp_3m_sde_gpu",
+              "dpmpp_sde",
+              "dpmpp_sde_gpu",
+              "euler",
+              "euler_ancestral",
+              "heun",
+              "heunpp2",
+              "lcm",
+              "lms",
+              "uni_pc",
+              "uni_pc_bh2"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Sampler"
+          },
+          "default": "euler",
+          "title": "Sampler"
+        }
+      ],
+      "outputs": [
+        {
+          "type": {
+            "type": "image"
+          },
+          "name": "output"
+        }
+      ],
+      "recommended_models": [
+        {
+          "id": "ffxvs/vae-flux:ae.safetensors",
+          "type": "hf.vae",
+          "name": "ffxvs/vae-flux",
+          "repo_id": "ffxvs/vae-flux",
+          "path": "ae.safetensors",
+          "size_on_disk": 335304388,
+          "tags": [
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 0,
+          "likes": 6
+        },
+        {
+          "id": "Comfy-Org/stable-diffusion-3.5-fp8:text_encoders/clip_l.safetensors",
+          "type": "hf.clip",
+          "name": "Comfy-Org/stable-diffusion-3.5-fp8",
+          "repo_id": "Comfy-Org/stable-diffusion-3.5-fp8",
+          "path": "text_encoders/clip_l.safetensors",
+          "size_on_disk": 246144152,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:other",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 91462,
+          "likes": 196
+        },
+        {
+          "id": "Comfy-Org/stable-diffusion-3.5-fp8:text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors",
+          "type": "hf.clip",
+          "name": "Comfy-Org/stable-diffusion-3.5-fp8",
+          "repo_id": "Comfy-Org/stable-diffusion-3.5-fp8",
+          "path": "text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors",
+          "size_on_disk": 5157348688,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:other",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 91462,
+          "likes": 196
+        },
+        {
+          "id": "Comfy-Org/flux1-dev:flux1-dev-fp8.safetensors",
+          "type": "hf.text_to_image",
+          "name": "Comfy-Org/flux1-dev",
+          "repo_id": "Comfy-Org/flux1-dev",
+          "path": "flux1-dev-fp8.safetensors",
+          "size_on_disk": 17246524772,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:other",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 335092,
+          "likes": 579
+        },
+        {
+          "id": "Comfy-Org/flux1-dev:flux1-dev.safetensors",
+          "type": "hf.text_to_image",
+          "name": "Comfy-Org/flux1-dev",
+          "repo_id": "Comfy-Org/flux1-dev",
+          "path": "flux1-dev.safetensors",
+          "size_on_disk": 23802932552,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:other",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 335092,
+          "likes": 579
+        },
+        {
+          "id": "Comfy-Org/flux1-schnell:flux1-schnell.safetensors",
+          "type": "hf.text_to_image",
+          "name": "Comfy-Org/flux1-schnell",
+          "repo_id": "Comfy-Org/flux1-schnell",
+          "path": "flux1-schnell.safetensors",
+          "size_on_disk": 23782506688,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:apache-2.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 227894,
+          "likes": 241
+        },
+        {
+          "id": "Comfy-Org/flux1-schnell:flux1-schnell-fp8.safetensors",
+          "type": "hf.text_to_image",
+          "name": "Comfy-Org/flux1-schnell",
+          "repo_id": "Comfy-Org/flux1-schnell",
+          "path": "flux1-schnell-fp8.safetensors",
+          "size_on_disk": 17236328572,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:apache-2.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 227894,
+          "likes": 241
+        }
+      ],
+      "basic_fields": [
+        "unet_model",
+        "clip_model",
+        "clip_model_secondary",
+        "vae_model",
+        "prompt",
+        "negative_prompt",
+        "width",
+        "height",
+        "steps"
+      ]
+    },
+    {
+      "title": "Qwen-Image",
+      "description": "Generates images from text prompts using Qwen-Image.\n    image, text-to-image, generative AI, qwen",
+      "namespace": "comfy.text_to_image",
+      "node_type": "comfy.text_to_image.QwenImage",
+      "properties": [
+        {
+          "name": "unet_model",
+          "type": {
+            "type": "hf.qwen_image"
+          },
+          "default": {
+            "type": "hf.qwen_image",
+            "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+            "path": "non_official/diffusion_models/qwen_image_distill_full_fp8_e4m3fn.safetensors",
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Unet Model",
+          "description": "The Qwen-Image UNet/diffusion checkpoint."
+        },
+        {
+          "name": "clip_model",
+          "type": {
+            "type": "hf.clip"
+          },
+          "default": {
+            "type": "hf.clip",
+            "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+            "path": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Clip Model",
+          "description": "The Qwen-Image CLIP/text encoder checkpoint."
+        },
+        {
+          "name": "vae_model",
+          "type": {
+            "type": "hf.vae"
+          },
+          "default": {
+            "type": "hf.vae",
+            "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+            "path": "split_files/vae/qwen_image_vae.safetensors",
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Vae Model",
+          "description": "The Qwen-Image VAE checkpoint."
+        },
+        {
+          "name": "prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Prompt",
+          "description": "The prompt to use."
+        },
+        {
+          "name": "negative_prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Negative Prompt",
+          "description": "The negative prompt to use."
+        },
+        {
+          "name": "true_cfg_scale",
+          "type": {
+            "type": "float"
+          },
+          "default": 1.0,
+          "title": "True Cfg Scale",
+          "min": 0.0,
+          "max": 10.0
+        },
+        {
+          "name": "steps",
+          "type": {
+            "type": "int"
+          },
+          "default": 30,
+          "title": "Steps",
+          "min": 1.0,
+          "max": 100.0
+        },
+        {
+          "name": "width",
+          "type": {
+            "type": "int"
+          },
+          "default": 1024,
+          "title": "Width",
+          "min": 64.0,
+          "max": 2048.0
+        },
+        {
+          "name": "height",
+          "type": {
+            "type": "int"
+          },
+          "default": 1024,
+          "title": "Height",
+          "min": 64.0,
+          "max": 2048.0
+        },
+        {
+          "name": "scheduler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "normal",
+              "karras",
+              "exponential",
+              "sgm_uniform",
+              "simple",
+              "ddim_uniform",
+              "beta",
+              "linear_quadratic"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Scheduler"
+          },
+          "default": "simple",
+          "title": "Scheduler"
+        },
+        {
+          "name": "sampler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "ddim",
+              "ddpm",
+              "dpm_2",
+              "dpm_2_ancestral",
+              "dpm_adaptive",
+              "dpm_fast",
+              "dpmpp_2m",
+              "dpmpp_2m_sde",
+              "dpmpp_2m_sde_gpu",
+              "dpmpp_2s_ancestral",
+              "dpmpp_3m_sde",
+              "dpmpp_3m_sde_gpu",
+              "dpmpp_sde",
+              "dpmpp_sde_gpu",
+              "euler",
+              "euler_ancestral",
+              "heun",
+              "heunpp2",
+              "lcm",
+              "lms",
+              "uni_pc",
+              "uni_pc_bh2"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Sampler"
+          },
+          "default": "euler",
+          "title": "Sampler"
+        },
+        {
+          "name": "seed",
+          "type": {
+            "type": "int"
+          },
+          "default": 0,
+          "title": "Seed",
+          "min": 0.0,
+          "max": 1000000000.0
+        },
+        {
+          "name": "denoise",
+          "type": {
+            "type": "float"
+          },
+          "default": 1.0,
+          "title": "Denoise",
+          "min": 0.0,
+          "max": 1.0
+        },
+        {
+          "name": "loras",
+          "type": {
+            "type": "list",
+            "type_args": [
+              {
+                "type": "comfy.lora_config"
+              }
+            ]
+          },
+          "default": [],
+          "title": "Loras",
+          "description": "List of LoRA models to apply."
+        }
+      ],
+      "outputs": [
+        {
+          "type": {
+            "type": "image"
+          },
+          "name": "output"
+        }
+      ],
+      "recommended_models": [
+        {
+          "id": "Comfy-Org/Qwen-Image_ComfyUI:non_official/diffusion_models/qwen_image_distill_full_fp8_e4m3fn.safetensors",
+          "type": "hf.qwen_image",
+          "name": "Comfy-Org/Qwen-Image_ComfyUI",
+          "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+          "path": "non_official/diffusion_models/qwen_image_distill_full_fp8_e4m3fn.safetensors",
+          "size_on_disk": 20430635136,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:apache-2.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 1949014,
+          "likes": 253
+        },
+        {
+          "id": "city96/Qwen-Image-gguf:qwen-image-Q4_K_M.gguf",
+          "type": "hf.qwen_image",
+          "name": "city96/Qwen-Image-gguf",
+          "repo_id": "city96/Qwen-Image-gguf",
+          "path": "qwen-image-Q4_K_M.gguf",
+          "size_on_disk": 13065746976,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "gguf",
+            "text-to-image",
+            "en",
+            "zh",
+            "base_model:Qwen/Qwen-Image",
+            "base_model:quantized:Qwen/Qwen-Image",
+            "license:apache-2.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 60970,
+          "likes": 268
+        },
+        {
+          "id": "city96/Qwen-Image-gguf:qwen-image-Q8_0.gguf",
+          "type": "hf.qwen_image",
+          "name": "city96/Qwen-Image-gguf",
+          "repo_id": "city96/Qwen-Image-gguf",
+          "path": "qwen-image-Q8_0.gguf",
+          "size_on_disk": 21761817120,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "gguf",
+            "text-to-image",
+            "en",
+            "zh",
+            "base_model:Qwen/Qwen-Image",
+            "base_model:quantized:Qwen/Qwen-Image",
+            "license:apache-2.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 60970,
+          "likes": 268
+        },
+        {
+          "id": "Comfy-Org/Qwen-Image_ComfyUI:split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "type": "hf.clip",
+          "name": "Comfy-Org/Qwen-Image_ComfyUI",
+          "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+          "path": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "size_on_disk": 9384670680,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:apache-2.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 1949014,
+          "likes": 253
+        },
+        {
+          "id": "Comfy-Org/Qwen-Image_ComfyUI:split_files/vae/qwen_image_vae.safetensors",
+          "type": "hf.vae",
+          "name": "Comfy-Org/Qwen-Image_ComfyUI",
+          "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+          "path": "split_files/vae/qwen_image_vae.safetensors",
+          "size_on_disk": 253806246,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:apache-2.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 1949014,
+          "likes": 253
+        }
+      ],
+      "basic_fields": [
+        "unet_model",
+        "clip_model",
+        "vae_model",
+        "prompt",
+        "negative_prompt",
+        "width",
+        "height",
+        "steps",
+        "true_cfg_scale",
+        "seed",
+        "sampler",
+        "scheduler"
+      ]
+    },
+    {
+      "title": "Qwen-Image-Edit",
+      "description": "Performs image editing using Qwen-Image-Edit with reference image conditioning.\n    image, image-editing, generative AI, qwen",
+      "namespace": "comfy.text_to_image",
+      "node_type": "comfy.text_to_image.QwenImageEdit",
+      "properties": [
+        {
+          "name": "unet_model",
+          "type": {
+            "type": "hf.qwen_image_edit"
+          },
+          "default": {
+            "type": "hf.qwen_image_edit",
+            "repo_id": "Comfy-Org/Qwen-Image-Edit_ComfyUI",
+            "path": "split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors",
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Unet Model",
+          "description": "The Qwen-Image-Edit UNet checkpoint."
+        },
+        {
+          "name": "clip_model",
+          "type": {
+            "type": "hf.clip"
+          },
+          "default": {
+            "type": "hf.clip",
+            "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+            "path": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Clip Model",
+          "description": "The Qwen-Image-Edit CLIP/text encoder checkpoint."
+        },
+        {
+          "name": "vae_model",
+          "type": {
+            "type": "hf.vae"
+          },
+          "default": {
+            "type": "hf.vae",
+            "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+            "path": "split_files/vae/qwen_image_vae.safetensors",
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Vae Model",
+          "description": "The Qwen-Image-Edit VAE checkpoint."
+        },
+        {
+          "name": "input_image",
+          "type": {
+            "type": "image"
+          },
+          "default": {
+            "type": "image",
+            "uri": "",
+            "asset_id": null,
+            "data": null
+          },
+          "title": "Input Image",
+          "description": "The reference image to edit."
+        },
+        {
+          "name": "prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Prompt",
+          "description": "Editing prompt."
+        },
+        {
+          "name": "negative_prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Negative Prompt",
+          "description": "Negative prompt."
+        },
+        {
+          "name": "true_cfg_scale",
+          "type": {
+            "type": "float"
+          },
+          "default": 1.0,
+          "title": "True Cfg Scale",
+          "min": 0.0,
+          "max": 10.0
+        },
+        {
+          "name": "steps",
+          "type": {
+            "type": "int"
+          },
+          "default": 20,
+          "title": "Steps",
+          "min": 1.0,
+          "max": 100.0
+        },
+        {
+          "name": "sampler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "ddim",
+              "ddpm",
+              "dpm_2",
+              "dpm_2_ancestral",
+              "dpm_adaptive",
+              "dpm_fast",
+              "dpmpp_2m",
+              "dpmpp_2m_sde",
+              "dpmpp_2m_sde_gpu",
+              "dpmpp_2s_ancestral",
+              "dpmpp_3m_sde",
+              "dpmpp_3m_sde_gpu",
+              "dpmpp_sde",
+              "dpmpp_sde_gpu",
+              "euler",
+              "euler_ancestral",
+              "heun",
+              "heunpp2",
+              "lcm",
+              "lms",
+              "uni_pc",
+              "uni_pc_bh2"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Sampler"
+          },
+          "default": "euler",
+          "title": "Sampler"
+        },
+        {
+          "name": "scheduler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "normal",
+              "karras",
+              "exponential",
+              "sgm_uniform",
+              "simple",
+              "ddim_uniform",
+              "beta",
+              "linear_quadratic"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Scheduler"
+          },
+          "default": "simple",
+          "title": "Scheduler"
+        },
+        {
+          "name": "seed",
+          "type": {
+            "type": "int"
+          },
+          "default": 0,
+          "title": "Seed",
+          "min": 0.0,
+          "max": 1000000000.0
+        },
+        {
+          "name": "denoise",
+          "type": {
+            "type": "float"
+          },
+          "default": 1.0,
+          "title": "Denoise",
+          "min": 0.0,
+          "max": 1.0
+        },
+        {
+          "name": "loras",
+          "type": {
+            "type": "list",
+            "type_args": [
+              {
+                "type": "comfy.lora_config"
+              }
+            ]
+          },
+          "default": [],
+          "title": "Loras",
+          "description": "List of LoRA models to apply."
+        }
+      ],
+      "outputs": [
+        {
+          "type": {
+            "type": "image"
+          },
+          "name": "output"
+        }
+      ],
+      "recommended_models": [
+        {
+          "id": "Comfy-Org/Qwen-Image-Edit_ComfyUI:split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors",
+          "type": "hf.qwen_image_edit",
+          "name": "Comfy-Org/Qwen-Image-Edit_ComfyUI",
+          "repo_id": "Comfy-Org/Qwen-Image-Edit_ComfyUI",
+          "path": "split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors",
+          "size_on_disk": 20430635136,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:apache-2.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 724125,
+          "likes": 220
+        },
+        {
+          "id": "Comfy-Org/Qwen-Image_ComfyUI:split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "type": "hf.clip",
+          "name": "Comfy-Org/Qwen-Image_ComfyUI",
+          "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+          "path": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "size_on_disk": 9384670680,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:apache-2.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 1949014,
+          "likes": 253
+        },
+        {
+          "id": "Comfy-Org/Qwen-Image_ComfyUI:split_files/vae/qwen_image_vae.safetensors",
+          "type": "hf.vae",
+          "name": "Comfy-Org/Qwen-Image_ComfyUI",
+          "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+          "path": "split_files/vae/qwen_image_vae.safetensors",
+          "size_on_disk": 253806246,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:apache-2.0",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 1949014,
+          "likes": 253
+        }
+      ],
+      "basic_fields": [
+        "unet_model",
+        "clip_model",
+        "vae_model",
+        "input_image",
+        "prompt",
+        "negative_prompt",
+        "steps",
+        "true_cfg_scale",
+        "sampler",
+        "scheduler",
+        "seed"
+      ]
+    },
+    {
+      "title": "Stable Diffusion",
+      "description": "Generates images from text prompts using Stable Diffusion.\n    image, text-to-image, generative AI, stable diffusion, SD1.5\n\n    This node is strictly text-to-image: it never consumes an input image.",
+      "namespace": "comfy.text_to_image",
+      "node_type": "comfy.text_to_image.StableDiffusion",
+      "properties": [
+        {
+          "name": "model",
+          "type": {
+            "type": "hf.text_to_image"
+          },
+          "default": {
+            "type": "hf.text_to_image",
+            "repo_id": "",
+            "path": null,
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Model",
+          "description": "The model to use."
+        },
+        {
+          "name": "prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Prompt",
+          "description": "The prompt to use."
+        },
+        {
+          "name": "negative_prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Negative Prompt",
+          "description": "The negative prompt to use."
+        },
+        {
+          "name": "seed",
+          "type": {
+            "type": "int"
+          },
+          "default": 0,
+          "title": "Seed",
+          "min": 0.0,
+          "max": 1000000.0
+        },
+        {
+          "name": "guidance_scale",
+          "type": {
+            "type": "float"
+          },
+          "default": 7.0,
+          "title": "Guidance Scale",
+          "min": 1.0,
+          "max": 30.0
+        },
+        {
+          "name": "num_inference_steps",
+          "type": {
+            "type": "int"
+          },
+          "default": 30,
+          "title": "Num Inference Steps",
+          "min": 1.0,
+          "max": 100.0
+        },
+        {
+          "name": "width",
+          "type": {
+            "type": "int"
+          },
+          "default": 768,
+          "title": "Width",
+          "min": 64.0,
+          "max": 2048.0
+        },
+        {
+          "name": "height",
+          "type": {
+            "type": "int"
+          },
+          "default": 768,
+          "title": "Height",
+          "min": 64.0,
+          "max": 2048.0
+        },
+        {
+          "name": "scheduler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "normal",
+              "karras",
+              "exponential",
+              "sgm_uniform",
+              "simple",
+              "ddim_uniform",
+              "beta",
+              "linear_quadratic"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Scheduler"
+          },
+          "default": "exponential",
+          "title": "Scheduler"
+        },
+        {
+          "name": "sampler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "ddim",
+              "ddpm",
+              "dpm_2",
+              "dpm_2_ancestral",
+              "dpm_adaptive",
+              "dpm_fast",
+              "dpmpp_2m",
+              "dpmpp_2m_sde",
+              "dpmpp_2m_sde_gpu",
+              "dpmpp_2s_ancestral",
+              "dpmpp_3m_sde",
+              "dpmpp_3m_sde_gpu",
+              "dpmpp_sde",
+              "dpmpp_sde_gpu",
+              "euler",
+              "euler_ancestral",
+              "heun",
+              "heunpp2",
+              "lcm",
+              "lms",
+              "uni_pc",
+              "uni_pc_bh2"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Sampler"
+          },
+          "default": "euler_ancestral",
+          "title": "Sampler"
+        },
+        {
+          "name": "loras",
+          "type": {
+            "type": "list",
+            "type_args": [
+              {
+                "type": "comfy.lora_config"
+              }
+            ]
+          },
+          "default": [],
+          "title": "Loras",
+          "description": "List of LoRA models to apply"
+        }
+      ],
+      "outputs": [
+        {
+          "type": {
+            "type": "image"
+          },
+          "name": "output"
+        }
+      ],
+      "recommended_models": [
+        {
+          "id": "Lykon/DreamShaper:DreamShaper_6.2_BakedVae_pruned.safetensors",
+          "type": "hf.stable_diffusion",
+          "name": "Lykon/DreamShaper",
+          "repo_id": "Lykon/DreamShaper",
+          "path": "DreamShaper_6.2_BakedVae_pruned.safetensors",
+          "size_on_disk": 2132625894,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "diffusers",
+            "stable-diffusion",
+            "stable-diffusion-diffusers",
+            "text-to-image",
+            "art",
+            "artistic",
+            "anime",
+            "en",
+            "doi:10.57967/hf/0453",
+            "license:other",
+            "autotrain_compatible",
+            "diffusers:StableDiffusionPipeline",
+            "region:us"
+          ],
+          "has_model_index": true,
+          "downloads": 215473,
+          "likes": 992
+        }
+      ],
+      "basic_fields": [
+        "model",
+        "prompt",
+        "negative_prompt",
+        "seed",
+        "guidance_scale",
+        "num_inference_steps",
+        "width",
+        "height",
+        "scheduler",
+        "sampler",
+        "loras"
+      ]
+    },
+    {
+      "title": "Stable Diffusion 3.5",
+      "description": "Generates images from text prompts using Stable Diffusion 3.5.\n    image, text-to-image, generative AI, SD3.5",
+      "namespace": "comfy.text_to_image",
+      "node_type": "comfy.text_to_image.StableDiffusion3",
+      "properties": [
+        {
+          "name": "model",
+          "type": {
+            "type": "hf.text_to_image"
+          },
+          "default": {
+            "type": "hf.text_to_image",
+            "repo_id": "",
+            "path": null,
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Model",
+          "description": "The model to use."
+        },
+        {
+          "name": "prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Prompt",
+          "description": "The prompt to use."
+        },
+        {
+          "name": "negative_prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Negative Prompt",
+          "description": "The negative prompt to use."
+        },
+        {
+          "name": "seed",
+          "type": {
+            "type": "int"
+          },
+          "default": 0,
+          "title": "Seed",
+          "min": 0.0,
+          "max": 1000000.0
+        },
+        {
+          "name": "guidance_scale",
+          "type": {
+            "type": "float"
+          },
+          "default": 4.0,
+          "title": "Guidance Scale",
+          "min": 1.0,
+          "max": 30.0
+        },
+        {
+          "name": "num_inference_steps",
+          "type": {
+            "type": "int"
+          },
+          "default": 20,
+          "title": "Num Inference Steps",
+          "min": 1.0,
+          "max": 100.0
+        },
+        {
+          "name": "width",
+          "type": {
+            "type": "int"
+          },
+          "default": 768,
+          "title": "Width",
+          "min": 64.0,
+          "max": 2048.0
+        },
+        {
+          "name": "height",
+          "type": {
+            "type": "int"
+          },
+          "default": 768,
+          "title": "Height",
+          "min": 64.0,
+          "max": 2048.0
+        },
+        {
+          "name": "scheduler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "normal",
+              "karras",
+              "exponential",
+              "sgm_uniform",
+              "simple",
+              "ddim_uniform",
+              "beta",
+              "linear_quadratic"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Scheduler"
+          },
+          "default": "exponential",
+          "title": "Scheduler"
+        },
+        {
+          "name": "sampler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "ddim",
+              "ddpm",
+              "dpm_2",
+              "dpm_2_ancestral",
+              "dpm_adaptive",
+              "dpm_fast",
+              "dpmpp_2m",
+              "dpmpp_2m_sde",
+              "dpmpp_2m_sde_gpu",
+              "dpmpp_2s_ancestral",
+              "dpmpp_3m_sde",
+              "dpmpp_3m_sde_gpu",
+              "dpmpp_sde",
+              "dpmpp_sde_gpu",
+              "euler",
+              "euler_ancestral",
+              "heun",
+              "heunpp2",
+              "lcm",
+              "lms",
+              "uni_pc",
+              "uni_pc_bh2"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Sampler"
+          },
+          "default": "euler_ancestral",
+          "title": "Sampler"
+        },
+        {
+          "name": "loras",
+          "type": {
+            "type": "list",
+            "type_args": [
+              {
+                "type": "comfy.lora_config"
+              }
+            ]
+          },
+          "default": [],
+          "title": "Loras",
+          "description": "List of LoRA models to apply"
+        }
+      ],
+      "outputs": [
+        {
+          "type": {
+            "type": "image"
+          },
+          "name": "output"
+        }
+      ],
+      "recommended_models": [
+        {
+          "id": "Comfy-Org/stable-diffusion-3.5-fp8:sd3.5_large_fp8_scaled.safetensors",
+          "type": "hf.text_to_image",
+          "name": "Comfy-Org/stable-diffusion-3.5-fp8",
+          "repo_id": "Comfy-Org/stable-diffusion-3.5-fp8",
+          "path": "sd3.5_large_fp8_scaled.safetensors",
+          "size_on_disk": 14934922866,
+          "tags": [
+            "diffusion-single-file",
+            "comfyui",
+            "license:other",
+            "region:us"
+          ],
+          "has_model_index": false,
+          "downloads": 91462,
+          "likes": 196
+        }
+      ],
+      "basic_fields": [
+        "model",
+        "prompt",
+        "negative_prompt",
+        "seed",
+        "guidance_scale",
+        "num_inference_steps",
+        "width",
+        "height",
+        "scheduler",
+        "sampler",
+        "loras"
+      ]
+    },
+    {
+      "title": "Stable Diffusion XL",
+      "description": "Generates images from text prompts using Stable Diffusion XL.\n    image, text-to-image, generative AI, SDXL\n\n    Text-only SDXL variant; no input image.",
+      "namespace": "comfy.text_to_image",
+      "node_type": "comfy.text_to_image.StableDiffusionXL",
+      "properties": [
+        {
+          "name": "model",
+          "type": {
+            "type": "hf.text_to_image"
+          },
+          "default": {
+            "type": "hf.text_to_image",
+            "repo_id": "",
+            "path": null,
+            "variant": null,
+            "allow_patterns": null,
+            "ignore_patterns": null
+          },
+          "title": "Model",
+          "description": "The model to use."
+        },
+        {
+          "name": "prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Prompt",
+          "description": "The prompt to use."
+        },
+        {
+          "name": "negative_prompt",
+          "type": {
+            "type": "str"
+          },
+          "default": "",
+          "title": "Negative Prompt",
+          "description": "The negative prompt to use."
+        },
+        {
+          "name": "seed",
+          "type": {
+            "type": "int"
+          },
+          "default": 0,
+          "title": "Seed",
+          "min": 0.0,
+          "max": 1000000.0
+        },
+        {
+          "name": "guidance_scale",
+          "type": {
+            "type": "float"
+          },
+          "default": 7.0,
+          "title": "Guidance Scale",
+          "min": 1.0,
+          "max": 30.0
+        },
+        {
+          "name": "num_inference_steps",
+          "type": {
+            "type": "int"
+          },
+          "default": 30,
+          "title": "Num Inference Steps",
+          "min": 1.0,
+          "max": 100.0
+        },
+        {
+          "name": "width",
+          "type": {
+            "type": "int"
+          },
+          "default": 768,
+          "title": "Width",
+          "min": 64.0,
+          "max": 2048.0
+        },
+        {
+          "name": "height",
+          "type": {
+            "type": "int"
+          },
+          "default": 768,
+          "title": "Height",
+          "min": 64.0,
+          "max": 2048.0
+        },
+        {
+          "name": "scheduler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "normal",
+              "karras",
+              "exponential",
+              "sgm_uniform",
+              "simple",
+              "ddim_uniform",
+              "beta",
+              "linear_quadratic"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Scheduler"
+          },
+          "default": "exponential",
+          "title": "Scheduler"
+        },
+        {
+          "name": "sampler",
+          "type": {
+            "type": "enum",
+            "values": [
+              "ddim",
+              "ddpm",
+              "dpm_2",
+              "dpm_2_ancestral",
+              "dpm_adaptive",
+              "dpm_fast",
+              "dpmpp_2m",
+              "dpmpp_2m_sde",
+              "dpmpp_2m_sde_gpu",
+              "dpmpp_2s_ancestral",
+              "dpmpp_3m_sde",
+              "dpmpp_3m_sde_gpu",
+              "dpmpp_sde",
+              "dpmpp_sde_gpu",
+              "euler",
+              "euler_ancestral",
+              "heun",
+              "heunpp2",
+              "lcm",
+              "lms",
+              "uni_pc",
+              "uni_pc_bh2"
+            ],
+            "type_name": "nodetool.nodes.comfy.enums.Sampler"
+          },
+          "default": "euler_ancestral",
+          "title": "Sampler"
+        },
+        {
+          "name": "loras",
+          "type": {
+            "type": "list",
+            "type_args": [
+              {
+                "type": "comfy.lora_config"
+              }
+            ]
+          },
+          "default": [],
+          "title": "Loras",
+          "description": "List of LoRA models to apply"
+        }
+      ],
+      "outputs": [
+        {
+          "type": {
+            "type": "image"
+          },
+          "name": "output"
+        }
+      ],
+      "recommended_models": [
+        {
+          "id": "stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors",
+          "type": "hf.stable_diffusion_xl",
+          "name": "stabilityai/stable-diffusion-xl-base-1.0",
+          "repo_id": "stabilityai/stable-diffusion-xl-base-1.0",
+          "path": "sd_xl_base_1.0.safetensors",
+          "size_on_disk": 6938078334,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "diffusers",
+            "onnx",
+            "safetensors",
+            "text-to-image",
+            "stable-diffusion",
+            "arxiv:2307.01952",
+            "arxiv:2211.01324",
+            "arxiv:2108.01073",
+            "arxiv:2112.10752",
+            "license:openrail++",
+            "autotrain_compatible",
+            "endpoints_compatible",
+            "diffusers:StableDiffusionXLPipeline",
+            "deploy:azure",
+            "region:us"
+          ],
+          "has_model_index": true,
+          "downloads": 2760051,
+          "likes": 7145
+        },
+        {
+          "id": "Lykon/dreamshaper-xl-v2-turbo:DreamShaperXL_Turbo_v2_1.safetensors",
+          "type": "hf.stable_diffusion_xl",
+          "name": "Lykon/dreamshaper-xl-v2-turbo",
+          "repo_id": "Lykon/dreamshaper-xl-v2-turbo",
+          "path": "DreamShaperXL_Turbo_v2_1.safetensors",
+          "size_on_disk": 6939220250,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "diffusers",
+            "safetensors",
+            "stable-diffusion",
+            "stable-diffusion-diffusers",
+            "stable-diffusion-xl",
+            "stable-diffusion-xl-turbo",
+            "text-to-image",
+            "art",
+            "artistic",
+            "anime",
+            "dreamshaper",
+            "turbo",
+            "lcm",
+            "en",
+            "license:openrail++",
+            "autotrain_compatible",
+            "endpoints_compatible",
+            "diffusers:StableDiffusionXLPipeline",
+            "region:us"
+          ],
+          "has_model_index": true,
+          "downloads": 56786,
+          "likes": 69
+        },
+        {
+          "id": "RunDiffusion/Juggernaut-XL-v9:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
+          "type": "hf.stable_diffusion_xl",
+          "name": "RunDiffusion/Juggernaut-XL-v9",
+          "repo_id": "RunDiffusion/Juggernaut-XL-v9",
+          "path": "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
+          "size_on_disk": 7105348188,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "diffusers",
+            "art",
+            "people",
+            "diffusion",
+            "Cinematic",
+            "Photography",
+            "Landscape",
+            "Interior",
+            "Food",
+            "Car",
+            "Wildlife",
+            "Architecture",
+            "text-to-image",
+            "en",
+            "base_model:stabilityai/stable-diffusion-xl-base-1.0",
+            "base_model:finetune:stabilityai/stable-diffusion-xl-base-1.0",
+            "license:creativeml-openrail-m",
+            "autotrain_compatible",
+            "endpoints_compatible",
+            "diffusers:StableDiffusionXLPipeline",
+            "region:us"
+          ],
+          "has_model_index": true,
+          "downloads": 304515,
+          "likes": 272
+        },
+        {
+          "id": "dataautogpt3/ProteusV0.3:ProteusV0.3.safetensors",
+          "type": "hf.stable_diffusion_xl",
+          "name": "dataautogpt3/ProteusV0.3",
+          "repo_id": "dataautogpt3/ProteusV0.3",
+          "path": "ProteusV0.3.safetensors",
+          "size_on_disk": 6938040736,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "diffusers",
+            "text-to-image",
+            "license:gpl-3.0",
+            "autotrain_compatible",
+            "endpoints_compatible",
+            "diffusers:StableDiffusionXLPipeline",
+            "region:us"
+          ],
+          "has_model_index": true,
+          "downloads": 287193,
+          "likes": 94
+        },
+        {
+          "id": "John6666/prefect-illustrious-xl-v3-sdxl",
+          "type": "hf.stable_diffusion_xl",
+          "name": "John6666/prefect-illustrious-xl-v3-sdxl",
+          "repo_id": "John6666/prefect-illustrious-xl-v3-sdxl",
+          "size_on_disk": 6941387072,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "diffusers",
+            "safetensors",
+            "text-to-image",
+            "stable-diffusion",
+            "stable-diffusion-xl",
+            "anime",
+            "girls",
+            "styles",
+            "lighting",
+            "texture",
+            "clean",
+            "color balance",
+            "prompt understanding",
+            "merge",
+            "noobai",
+            "Illustrious XL v1.0",
+            "illustrious",
+            "en",
+            "base_model:Laxhar/noobai-XL-1.1",
+            "base_model:merge:Laxhar/noobai-XL-1.1",
+            "base_model:OnomaAIResearch/Illustrious-XL-v1.0",
+            "base_model:merge:OnomaAIResearch/Illustrious-XL-v1.0",
+            "license:other",
+            "autotrain_compatible",
+            "endpoints_compatible",
+            "diffusers:StableDiffusionXLPipeline",
+            "region:us"
+          ],
+          "has_model_index": true,
+          "downloads": 301210,
+          "likes": 0
+        },
+        {
+          "id": "cagliostrolab/animagine-xl-4.0:animagine-xl-4.0-opt.safetensors",
+          "type": "hf.stable_diffusion_xl",
+          "name": "cagliostrolab/animagine-xl-4.0",
+          "repo_id": "cagliostrolab/animagine-xl-4.0",
+          "path": "animagine-xl-4.0-opt.safetensors",
+          "size_on_disk": 6938350040,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "diffusers",
+            "safetensors",
+            "text-to-image",
+            "stable-diffusion",
+            "stable-diffusion-xl",
+            "en",
+            "base_model:stabilityai/stable-diffusion-xl-base-1.0",
+            "base_model:finetune:stabilityai/stable-diffusion-xl-base-1.0",
+            "license:openrail++",
+            "autotrain_compatible",
+            "endpoints_compatible",
+            "diffusers:StableDiffusionXLPipeline",
+            "region:us"
+          ],
+          "has_model_index": true,
+          "downloads": 216454,
+          "likes": 354
+        },
+        {
+          "id": "SG161222/RealVisXL_V5.0:RealVisXL_V5.0_fp16.safetensors",
+          "type": "hf.stable_diffusion_xl",
+          "name": "SG161222/RealVisXL_V5.0",
+          "repo_id": "SG161222/RealVisXL_V5.0",
+          "path": "RealVisXL_V5.0_fp16.safetensors",
+          "size_on_disk": 6938065488,
+          "pipeline_tag": "text-to-image",
+          "tags": [
+            "diffusers",
+            "safetensors",
+            "license:openrail++",
+            "autotrain_compatible",
+            "endpoints_compatible",
+            "diffusers:StableDiffusionXLPipeline",
+            "region:us"
+          ],
+          "has_model_index": true,
+          "downloads": 49121,
+          "likes": 115
+        }
+      ],
+      "basic_fields": [
+        "model",
+        "prompt",
+        "negative_prompt",
+        "seed",
+        "guidance_scale",
+        "num_inference_steps",
+        "width",
+        "height",
+        "scheduler",
+        "sampler",
+        "loras"
+      ]
+    },
+    {
       "title": "Control Net",
       "description": "Generates images using Stable Diffusion with ControlNet for additional image control.\n    image, controlnet, generative, stable diffusion, high-resolution, SD\n\n    This node makes it explicit that it consumes an input image and a separate\n    control image.",
       "namespace": "comfy.image_to_image",
@@ -285,7 +2004,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 14306,
+          "downloads": 13929,
           "likes": 52
         },
         {
@@ -311,7 +2030,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 31232,
+          "downloads": 30848,
           "likes": 130
         },
         {
@@ -337,7 +2056,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 10955,
+          "downloads": 10638,
           "likes": 17
         },
         {
@@ -363,7 +2082,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 9018,
+          "downloads": 9075,
           "likes": 72
         },
         {
@@ -389,7 +2108,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 7218,
+          "downloads": 7187,
           "likes": 29
         },
         {
@@ -415,7 +2134,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 13247,
+          "downloads": 12947,
           "likes": 127
         },
         {
@@ -430,7 +2149,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:ip-adapter_sd15.pth",
@@ -444,7 +2163,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:ioclab_sd15_recolor.safetensors",
@@ -458,7 +2177,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "diffusers/controlnet-canny-sdxl-1.0:diffusion_pytorch_model.fp16.safetensors",
@@ -480,7 +2199,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 10504,
+          "downloads": 9966,
           "likes": 518
         },
         {
@@ -504,7 +2223,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 17348,
+          "downloads": 16846,
           "likes": 190
         },
         {
@@ -527,7 +2246,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 784,
+          "downloads": 827,
           "likes": 39
         },
         {
@@ -542,7 +2261,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:diffusers_xl_canny_mid.safetensors",
@@ -556,7 +2275,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:diffusers_xl_canny_small.safetensors",
@@ -570,7 +2289,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:diffusers_xl_depth_full.safetensors",
@@ -584,7 +2303,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:diffusers_xl_depth_mid.safetensors",
@@ -598,7 +2317,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:diffusers_xl_depth_small.safetensors",
@@ -612,7 +2331,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_canny.safetensors",
@@ -626,7 +2345,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_depth_midas.safetensors",
@@ -640,7 +2359,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_depth_zoe.safetensors",
@@ -654,7 +2373,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_lineart.safetensors",
@@ -668,7 +2387,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_openpose.safetensors",
@@ -682,7 +2401,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:t2i-adapter_diffusers_xl_sketch.safetensors",
@@ -696,7 +2415,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:t2i-adapter_xl_canny.safetensors",
@@ -710,7 +2429,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:t2i-adapter_xl_openpose.safetensors",
@@ -724,7 +2443,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:t2i-adapter_xl_sketch.safetensors",
@@ -738,7 +2457,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:thibaud_xl_openpose.safetensors",
@@ -752,7 +2471,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:thibaud_xl_openpose_256lora.safetensors",
@@ -766,7 +2485,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:sargezt_xl_depth_faid_vidit.safetensors",
@@ -780,7 +2499,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:sargezt_xl_depth_zeed.safetensors",
@@ -794,7 +2513,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:sargezt_xl_depth.safetensors",
@@ -808,7 +2527,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:sargezt_xl_softedge.safetensors",
@@ -822,7 +2541,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:ip-adapter_xl.pth",
@@ -836,7 +2555,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_depth_anime.safetensors",
@@ -850,7 +2569,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_canny_anime.safetensors",
@@ -864,7 +2583,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_scribble_anime.safetensors",
@@ -878,7 +2597,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_openpose_anime.safetensors",
@@ -892,7 +2611,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_openpose_anime_v2.safetensors",
@@ -906,7 +2625,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_blur_anime_beta.safetensors",
@@ -920,7 +2639,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_blur.safetensors",
@@ -934,7 +2653,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_blur_anime.safetensors",
@@ -948,7 +2667,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_canny.safetensors",
@@ -962,7 +2681,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "lllyasviel/sd_control_collection:kohya_controllllite_xl_depth.safetensors",
@@ -976,7 +2695,7 @@
           ],
           "has_model_index": false,
           "downloads": 0,
-          "likes": 2068
+          "likes": 2069
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_canny.safetensors",
@@ -992,8 +2711,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_depth.safetensors",
@@ -1009,8 +2728,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_depth_V2.safetensors",
@@ -1026,8 +2745,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_dw_openpose.safetensors",
@@ -1043,8 +2762,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_lineart_anime_denoise.safetensors",
@@ -1060,8 +2779,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_mlsd_V2.safetensors",
@@ -1077,8 +2796,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_normal.safetensors",
@@ -1094,8 +2813,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_normal_dsine.safetensors",
@@ -1111,8 +2830,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_recolor_luminance.safetensors",
@@ -1128,8 +2847,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_segment_animeface.safetensors",
@@ -1145,8 +2864,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_segment_animeface_V2.safetensors",
@@ -1162,8 +2881,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_sketch.safetensors",
@@ -1179,8 +2898,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_softedge.safetensors",
@@ -1196,8 +2915,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_t2i-adapter_color_shuffle.safetensors",
@@ -1213,8 +2932,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_tile_anime_alpha.safetensors",
@@ -1230,8 +2949,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_tile_anime_beta.safetensors",
@@ -1247,8 +2966,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         },
         {
           "id": "bdsqlsz/qinglong_controlnet-lllite:bdsqlsz_controlllite_xl_tile_realistic.safetensors",
@@ -1264,8 +2983,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 11388,
-          "likes": 335
+          "downloads": 11981,
+          "likes": 336
         }
       ],
       "basic_fields": [
@@ -1458,8 +3177,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 132136,
-          "likes": 170
+          "downloads": 130774,
+          "likes": 171
         },
         {
           "id": "ffxvs/vae-flux:ae.safetensors",
@@ -1489,7 +3208,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 96260,
+          "downloads": 91462,
           "likes": 196
         },
         {
@@ -1506,7 +3225,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 96260,
+          "downloads": 91462,
           "likes": 196
         }
       ],
@@ -1751,7 +3470,7 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 96260,
+          "downloads": 91462,
           "likes": 196
         }
       ],
@@ -1989,7 +3708,7 @@
       "recommended_models": [
         {
           "id": "Lykon/DreamShaper:DreamShaper_6.2_BakedVae_pruned.safetensors",
-          "type": "hf.text_to_image",
+          "type": "hf.stable_diffusion",
           "name": "Lykon/DreamShaper",
           "repo_id": "Lykon/DreamShaper",
           "path": "DreamShaper_6.2_BakedVae_pruned.safetensors",
@@ -2011,7 +3730,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 334662,
+          "downloads": 215473,
           "likes": 992
         }
       ],
@@ -2249,7 +3968,7 @@
       "recommended_models": [
         {
           "id": "stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors",
-          "type": "hf.text_to_image",
+          "type": "hf.stable_diffusion_xl",
           "name": "stabilityai/stable-diffusion-xl-base-1.0",
           "repo_id": "stabilityai/stable-diffusion-xl-base-1.0",
           "path": "sd_xl_base_1.0.safetensors",
@@ -2273,12 +3992,12 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 2729785,
-          "likes": 7139
+          "downloads": 2760051,
+          "likes": 7145
         },
         {
           "id": "Lykon/dreamshaper-xl-v2-turbo:DreamShaperXL_Turbo_v2_1.safetensors",
-          "type": "hf.text_to_image",
+          "type": "hf.stable_diffusion_xl",
           "name": "Lykon/dreamshaper-xl-v2-turbo",
           "repo_id": "Lykon/dreamshaper-xl-v2-turbo",
           "path": "DreamShaperXL_Turbo_v2_1.safetensors",
@@ -2306,12 +4025,12 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 57803,
+          "downloads": 56786,
           "likes": 69
         },
         {
           "id": "RunDiffusion/Juggernaut-XL-v9:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
-          "type": "hf.text_to_image",
+          "type": "hf.stable_diffusion_xl",
           "name": "RunDiffusion/Juggernaut-XL-v9",
           "repo_id": "RunDiffusion/Juggernaut-XL-v9",
           "path": "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
@@ -2341,12 +4060,12 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 306828,
-          "likes": 268
+          "downloads": 304515,
+          "likes": 272
         },
         {
           "id": "dataautogpt3/ProteusV0.3:ProteusV0.3.safetensors",
-          "type": "hf.text_to_image",
+          "type": "hf.stable_diffusion_xl",
           "name": "dataautogpt3/ProteusV0.3",
           "repo_id": "dataautogpt3/ProteusV0.3",
           "path": "ProteusV0.3.safetensors",
@@ -2362,12 +4081,12 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 291372,
+          "downloads": 287193,
           "likes": 94
         },
         {
           "id": "John6666/prefect-illustrious-xl-v3-sdxl",
-          "type": "hf.text_to_image",
+          "type": "hf.stable_diffusion_xl",
           "name": "John6666/prefect-illustrious-xl-v3-sdxl",
           "repo_id": "John6666/prefect-illustrious-xl-v3-sdxl",
           "size_on_disk": 6941387072,
@@ -2402,12 +4121,12 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 267640,
+          "downloads": 301210,
           "likes": 0
         },
         {
           "id": "cagliostrolab/animagine-xl-4.0:animagine-xl-4.0-opt.safetensors",
-          "type": "hf.text_to_image",
+          "type": "hf.stable_diffusion_xl",
           "name": "cagliostrolab/animagine-xl-4.0",
           "repo_id": "cagliostrolab/animagine-xl-4.0",
           "path": "animagine-xl-4.0-opt.safetensors",
@@ -2429,12 +4148,12 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 198773,
+          "downloads": 216454,
           "likes": 354
         },
         {
           "id": "SG161222/RealVisXL_V5.0:RealVisXL_V5.0_fp16.safetensors",
-          "type": "hf.text_to_image",
+          "type": "hf.stable_diffusion_xl",
           "name": "SG161222/RealVisXL_V5.0",
           "repo_id": "SG161222/RealVisXL_V5.0",
           "path": "RealVisXL_V5.0_fp16.safetensors",
@@ -2450,7 +4169,7 @@
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 51502,
+          "downloads": 49121,
           "likes": 115
         }
       ],
@@ -2628,1087 +4347,6 @@
         "strength4",
         "lora5",
         "strength5"
-      ]
-    },
-    {
-      "title": "Flux",
-      "description": "Generates images from text prompts using the Flux model.\n    image, text-to-image, generative AI, flux\n\n    ComfyUI-native Flux implementation in the comfy.text_to_image namespace.",
-      "namespace": "comfy.text_to_image",
-      "node_type": "comfy.text_to_image.Flux",
-      "properties": [
-        {
-          "name": "model",
-          "type": {
-            "type": "hf.text_to_image"
-          },
-          "default": {
-            "type": "hf.text_to_image",
-            "repo_id": "",
-            "path": null,
-            "variant": null,
-            "allow_patterns": null,
-            "ignore_patterns": null
-          },
-          "title": "Model",
-          "description": "The model to use."
-        },
-        {
-          "name": "prompt",
-          "type": {
-            "type": "str"
-          },
-          "default": "",
-          "title": "Prompt",
-          "description": "The prompt to use."
-        },
-        {
-          "name": "negative_prompt",
-          "type": {
-            "type": "str"
-          },
-          "default": "",
-          "title": "Negative Prompt",
-          "description": "The negative prompt to use."
-        },
-        {
-          "name": "width",
-          "type": {
-            "type": "int"
-          },
-          "default": 1024,
-          "title": "Width",
-          "min": 64.0,
-          "max": 2048.0
-        },
-        {
-          "name": "height",
-          "type": {
-            "type": "int"
-          },
-          "default": 1024,
-          "title": "Height",
-          "min": 64.0,
-          "max": 2048.0
-        },
-        {
-          "name": "steps",
-          "type": {
-            "type": "int"
-          },
-          "default": 20,
-          "title": "Steps",
-          "min": 1.0,
-          "max": 100.0
-        },
-        {
-          "name": "guidance_scale",
-          "type": {
-            "type": "float"
-          },
-          "default": 5.0,
-          "title": "Guidance Scale",
-          "min": 1.0,
-          "max": 30.0
-        },
-        {
-          "name": "seed",
-          "type": {
-            "type": "int"
-          },
-          "default": 0,
-          "title": "Seed",
-          "min": 0.0,
-          "max": 1000000000.0
-        },
-        {
-          "name": "denoise",
-          "type": {
-            "type": "float"
-          },
-          "default": 1.0,
-          "title": "Denoise",
-          "min": 0.0,
-          "max": 1.0
-        },
-        {
-          "name": "scheduler",
-          "type": {
-            "type": "enum",
-            "values": [
-              "normal",
-              "karras",
-              "exponential",
-              "sgm_uniform",
-              "simple",
-              "ddim_uniform",
-              "beta",
-              "linear_quadratic"
-            ],
-            "type_name": "nodetool.nodes.comfy.enums.Scheduler"
-          },
-          "default": "simple",
-          "title": "Scheduler"
-        },
-        {
-          "name": "sampler",
-          "type": {
-            "type": "enum",
-            "values": [
-              "ddim",
-              "ddpm",
-              "dpm_2",
-              "dpm_2_ancestral",
-              "dpm_adaptive",
-              "dpm_fast",
-              "dpmpp_2m",
-              "dpmpp_2m_sde",
-              "dpmpp_2m_sde_gpu",
-              "dpmpp_2s_ancestral",
-              "dpmpp_3m_sde",
-              "dpmpp_3m_sde_gpu",
-              "dpmpp_sde",
-              "dpmpp_sde_gpu",
-              "euler",
-              "euler_ancestral",
-              "heun",
-              "heunpp2",
-              "lcm",
-              "lms",
-              "uni_pc",
-              "uni_pc_bh2"
-            ],
-            "type_name": "nodetool.nodes.comfy.enums.Sampler"
-          },
-          "default": "euler",
-          "title": "Sampler"
-        }
-      ],
-      "outputs": [
-        {
-          "type": {
-            "type": "image"
-          },
-          "name": "output"
-        }
-      ],
-      "recommended_models": [
-        {
-          "id": "ffxvs/vae-flux:ae.safetensors",
-          "type": "hf.vae",
-          "name": "ffxvs/vae-flux",
-          "repo_id": "ffxvs/vae-flux",
-          "path": "ae.safetensors",
-          "size_on_disk": 335304388,
-          "tags": [
-            "region:us"
-          ],
-          "has_model_index": false,
-          "downloads": 0,
-          "likes": 6
-        },
-        {
-          "id": "Comfy-Org/stable-diffusion-3.5-fp8:text_encoders/clip_l.safetensors",
-          "type": "hf.clip",
-          "name": "Comfy-Org/stable-diffusion-3.5-fp8",
-          "repo_id": "Comfy-Org/stable-diffusion-3.5-fp8",
-          "path": "text_encoders/clip_l.safetensors",
-          "size_on_disk": 246144152,
-          "tags": [
-            "diffusion-single-file",
-            "comfyui",
-            "license:other",
-            "region:us"
-          ],
-          "has_model_index": false,
-          "downloads": 96260,
-          "likes": 196
-        },
-        {
-          "id": "Comfy-Org/stable-diffusion-3.5-fp8:text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors",
-          "type": "hf.clip",
-          "name": "Comfy-Org/stable-diffusion-3.5-fp8",
-          "repo_id": "Comfy-Org/stable-diffusion-3.5-fp8",
-          "path": "text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors",
-          "size_on_disk": 5157348688,
-          "tags": [
-            "diffusion-single-file",
-            "comfyui",
-            "license:other",
-            "region:us"
-          ],
-          "has_model_index": false,
-          "downloads": 96260,
-          "likes": 196
-        },
-        {
-          "id": "Comfy-Org/flux1-dev:flux1-dev-fp8.safetensors",
-          "type": "hf.text_to_image",
-          "name": "Comfy-Org/flux1-dev",
-          "repo_id": "Comfy-Org/flux1-dev",
-          "path": "flux1-dev-fp8.safetensors",
-          "size_on_disk": 17246524772,
-          "tags": [
-            "diffusion-single-file",
-            "comfyui",
-            "license:other",
-            "region:us"
-          ],
-          "has_model_index": false,
-          "downloads": 327793,
-          "likes": 578
-        },
-        {
-          "id": "Comfy-Org/flux1-dev:flux1-dev.safetensors",
-          "type": "hf.text_to_image",
-          "name": "Comfy-Org/flux1-dev",
-          "repo_id": "Comfy-Org/flux1-dev",
-          "path": "flux1-dev.safetensors",
-          "size_on_disk": 23802932552,
-          "tags": [
-            "diffusion-single-file",
-            "comfyui",
-            "license:other",
-            "region:us"
-          ],
-          "has_model_index": false,
-          "downloads": 327793,
-          "likes": 578
-        },
-        {
-          "id": "Comfy-Org/flux1-schnell:flux1-schnell.safetensors",
-          "type": "hf.text_to_image",
-          "name": "Comfy-Org/flux1-schnell",
-          "repo_id": "Comfy-Org/flux1-schnell",
-          "path": "flux1-schnell.safetensors",
-          "size_on_disk": 23782506688,
-          "tags": [
-            "diffusion-single-file",
-            "comfyui",
-            "license:apache-2.0",
-            "region:us"
-          ],
-          "has_model_index": false,
-          "downloads": 242683,
-          "likes": 241
-        },
-        {
-          "id": "Comfy-Org/flux1-schnell:flux1-schnell-fp8.safetensors",
-          "type": "hf.text_to_image",
-          "name": "Comfy-Org/flux1-schnell",
-          "repo_id": "Comfy-Org/flux1-schnell",
-          "path": "flux1-schnell-fp8.safetensors",
-          "size_on_disk": 17236328572,
-          "tags": [
-            "diffusion-single-file",
-            "comfyui",
-            "license:apache-2.0",
-            "region:us"
-          ],
-          "has_model_index": false,
-          "downloads": 242683,
-          "likes": 241
-        }
-      ],
-      "basic_fields": [
-        "model",
-        "prompt",
-        "negative_prompt",
-        "width",
-        "height",
-        "steps"
-      ]
-    },
-    {
-      "title": "Stable Diffusion",
-      "description": "Generates images from text prompts using Stable Diffusion.\n    image, text-to-image, generative AI, stable diffusion, SD1.5\n\n    This node is strictly text-to-image: it never consumes an input image.",
-      "namespace": "comfy.text_to_image",
-      "node_type": "comfy.text_to_image.StableDiffusion",
-      "properties": [
-        {
-          "name": "model",
-          "type": {
-            "type": "hf.text_to_image"
-          },
-          "default": {
-            "type": "hf.text_to_image",
-            "repo_id": "",
-            "path": null,
-            "variant": null,
-            "allow_patterns": null,
-            "ignore_patterns": null
-          },
-          "title": "Model",
-          "description": "The model to use."
-        },
-        {
-          "name": "prompt",
-          "type": {
-            "type": "str"
-          },
-          "default": "",
-          "title": "Prompt",
-          "description": "The prompt to use."
-        },
-        {
-          "name": "negative_prompt",
-          "type": {
-            "type": "str"
-          },
-          "default": "",
-          "title": "Negative Prompt",
-          "description": "The negative prompt to use."
-        },
-        {
-          "name": "seed",
-          "type": {
-            "type": "int"
-          },
-          "default": 0,
-          "title": "Seed",
-          "min": 0.0,
-          "max": 1000000.0
-        },
-        {
-          "name": "guidance_scale",
-          "type": {
-            "type": "float"
-          },
-          "default": 7.0,
-          "title": "Guidance Scale",
-          "min": 1.0,
-          "max": 30.0
-        },
-        {
-          "name": "num_inference_steps",
-          "type": {
-            "type": "int"
-          },
-          "default": 30,
-          "title": "Num Inference Steps",
-          "min": 1.0,
-          "max": 100.0
-        },
-        {
-          "name": "width",
-          "type": {
-            "type": "int"
-          },
-          "default": 768,
-          "title": "Width",
-          "min": 64.0,
-          "max": 2048.0
-        },
-        {
-          "name": "height",
-          "type": {
-            "type": "int"
-          },
-          "default": 768,
-          "title": "Height",
-          "min": 64.0,
-          "max": 2048.0
-        },
-        {
-          "name": "scheduler",
-          "type": {
-            "type": "enum",
-            "values": [
-              "normal",
-              "karras",
-              "exponential",
-              "sgm_uniform",
-              "simple",
-              "ddim_uniform",
-              "beta",
-              "linear_quadratic"
-            ],
-            "type_name": "nodetool.nodes.comfy.enums.Scheduler"
-          },
-          "default": "exponential",
-          "title": "Scheduler"
-        },
-        {
-          "name": "sampler",
-          "type": {
-            "type": "enum",
-            "values": [
-              "ddim",
-              "ddpm",
-              "dpm_2",
-              "dpm_2_ancestral",
-              "dpm_adaptive",
-              "dpm_fast",
-              "dpmpp_2m",
-              "dpmpp_2m_sde",
-              "dpmpp_2m_sde_gpu",
-              "dpmpp_2s_ancestral",
-              "dpmpp_3m_sde",
-              "dpmpp_3m_sde_gpu",
-              "dpmpp_sde",
-              "dpmpp_sde_gpu",
-              "euler",
-              "euler_ancestral",
-              "heun",
-              "heunpp2",
-              "lcm",
-              "lms",
-              "uni_pc",
-              "uni_pc_bh2"
-            ],
-            "type_name": "nodetool.nodes.comfy.enums.Sampler"
-          },
-          "default": "euler_ancestral",
-          "title": "Sampler"
-        },
-        {
-          "name": "loras",
-          "type": {
-            "type": "list",
-            "type_args": [
-              {
-                "type": "comfy.lora_config"
-              }
-            ]
-          },
-          "default": [],
-          "title": "Loras",
-          "description": "List of LoRA models to apply"
-        }
-      ],
-      "outputs": [
-        {
-          "type": {
-            "type": "image"
-          },
-          "name": "output"
-        }
-      ],
-      "recommended_models": [
-        {
-          "id": "Lykon/DreamShaper:DreamShaper_6.2_BakedVae_pruned.safetensors",
-          "type": "hf.text_to_image",
-          "name": "Lykon/DreamShaper",
-          "repo_id": "Lykon/DreamShaper",
-          "path": "DreamShaper_6.2_BakedVae_pruned.safetensors",
-          "size_on_disk": 2132625894,
-          "pipeline_tag": "text-to-image",
-          "tags": [
-            "diffusers",
-            "stable-diffusion",
-            "stable-diffusion-diffusers",
-            "text-to-image",
-            "art",
-            "artistic",
-            "anime",
-            "en",
-            "doi:10.57967/hf/0453",
-            "license:other",
-            "autotrain_compatible",
-            "diffusers:StableDiffusionPipeline",
-            "region:us"
-          ],
-          "has_model_index": true,
-          "downloads": 334662,
-          "likes": 992
-        }
-      ],
-      "basic_fields": [
-        "model",
-        "prompt",
-        "negative_prompt",
-        "seed",
-        "guidance_scale",
-        "num_inference_steps",
-        "width",
-        "height",
-        "scheduler",
-        "sampler",
-        "loras"
-      ]
-    },
-    {
-      "title": "Stable Diffusion 3.5",
-      "description": "Generates images from text prompts using Stable Diffusion 3.5.\n    image, text-to-image, generative AI, SD3.5",
-      "namespace": "comfy.text_to_image",
-      "node_type": "comfy.text_to_image.StableDiffusion3",
-      "properties": [
-        {
-          "name": "model",
-          "type": {
-            "type": "hf.text_to_image"
-          },
-          "default": {
-            "type": "hf.text_to_image",
-            "repo_id": "",
-            "path": null,
-            "variant": null,
-            "allow_patterns": null,
-            "ignore_patterns": null
-          },
-          "title": "Model",
-          "description": "The model to use."
-        },
-        {
-          "name": "prompt",
-          "type": {
-            "type": "str"
-          },
-          "default": "",
-          "title": "Prompt",
-          "description": "The prompt to use."
-        },
-        {
-          "name": "negative_prompt",
-          "type": {
-            "type": "str"
-          },
-          "default": "",
-          "title": "Negative Prompt",
-          "description": "The negative prompt to use."
-        },
-        {
-          "name": "seed",
-          "type": {
-            "type": "int"
-          },
-          "default": 0,
-          "title": "Seed",
-          "min": 0.0,
-          "max": 1000000.0
-        },
-        {
-          "name": "guidance_scale",
-          "type": {
-            "type": "float"
-          },
-          "default": 4.0,
-          "title": "Guidance Scale",
-          "min": 1.0,
-          "max": 30.0
-        },
-        {
-          "name": "num_inference_steps",
-          "type": {
-            "type": "int"
-          },
-          "default": 20,
-          "title": "Num Inference Steps",
-          "min": 1.0,
-          "max": 100.0
-        },
-        {
-          "name": "width",
-          "type": {
-            "type": "int"
-          },
-          "default": 768,
-          "title": "Width",
-          "min": 64.0,
-          "max": 2048.0
-        },
-        {
-          "name": "height",
-          "type": {
-            "type": "int"
-          },
-          "default": 768,
-          "title": "Height",
-          "min": 64.0,
-          "max": 2048.0
-        },
-        {
-          "name": "scheduler",
-          "type": {
-            "type": "enum",
-            "values": [
-              "normal",
-              "karras",
-              "exponential",
-              "sgm_uniform",
-              "simple",
-              "ddim_uniform",
-              "beta",
-              "linear_quadratic"
-            ],
-            "type_name": "nodetool.nodes.comfy.enums.Scheduler"
-          },
-          "default": "exponential",
-          "title": "Scheduler"
-        },
-        {
-          "name": "sampler",
-          "type": {
-            "type": "enum",
-            "values": [
-              "ddim",
-              "ddpm",
-              "dpm_2",
-              "dpm_2_ancestral",
-              "dpm_adaptive",
-              "dpm_fast",
-              "dpmpp_2m",
-              "dpmpp_2m_sde",
-              "dpmpp_2m_sde_gpu",
-              "dpmpp_2s_ancestral",
-              "dpmpp_3m_sde",
-              "dpmpp_3m_sde_gpu",
-              "dpmpp_sde",
-              "dpmpp_sde_gpu",
-              "euler",
-              "euler_ancestral",
-              "heun",
-              "heunpp2",
-              "lcm",
-              "lms",
-              "uni_pc",
-              "uni_pc_bh2"
-            ],
-            "type_name": "nodetool.nodes.comfy.enums.Sampler"
-          },
-          "default": "euler_ancestral",
-          "title": "Sampler"
-        },
-        {
-          "name": "loras",
-          "type": {
-            "type": "list",
-            "type_args": [
-              {
-                "type": "comfy.lora_config"
-              }
-            ]
-          },
-          "default": [],
-          "title": "Loras",
-          "description": "List of LoRA models to apply"
-        }
-      ],
-      "outputs": [
-        {
-          "type": {
-            "type": "image"
-          },
-          "name": "output"
-        }
-      ],
-      "recommended_models": [
-        {
-          "id": "Comfy-Org/stable-diffusion-3.5-fp8:sd3.5_large_fp8_scaled.safetensors",
-          "type": "hf.text_to_image",
-          "name": "Comfy-Org/stable-diffusion-3.5-fp8",
-          "repo_id": "Comfy-Org/stable-diffusion-3.5-fp8",
-          "path": "sd3.5_large_fp8_scaled.safetensors",
-          "size_on_disk": 14934922866,
-          "tags": [
-            "diffusion-single-file",
-            "comfyui",
-            "license:other",
-            "region:us"
-          ],
-          "has_model_index": false,
-          "downloads": 96260,
-          "likes": 196
-        }
-      ],
-      "basic_fields": [
-        "model",
-        "prompt",
-        "negative_prompt",
-        "seed",
-        "guidance_scale",
-        "num_inference_steps",
-        "width",
-        "height",
-        "scheduler",
-        "sampler",
-        "loras"
-      ]
-    },
-    {
-      "title": "Stable Diffusion XL",
-      "description": "Generates images from text prompts using Stable Diffusion XL.\n    image, text-to-image, generative AI, SDXL\n\n    Text-only SDXL variant; no input image.",
-      "namespace": "comfy.text_to_image",
-      "node_type": "comfy.text_to_image.StableDiffusionXL",
-      "properties": [
-        {
-          "name": "model",
-          "type": {
-            "type": "hf.text_to_image"
-          },
-          "default": {
-            "type": "hf.text_to_image",
-            "repo_id": "",
-            "path": null,
-            "variant": null,
-            "allow_patterns": null,
-            "ignore_patterns": null
-          },
-          "title": "Model",
-          "description": "The model to use."
-        },
-        {
-          "name": "prompt",
-          "type": {
-            "type": "str"
-          },
-          "default": "",
-          "title": "Prompt",
-          "description": "The prompt to use."
-        },
-        {
-          "name": "negative_prompt",
-          "type": {
-            "type": "str"
-          },
-          "default": "",
-          "title": "Negative Prompt",
-          "description": "The negative prompt to use."
-        },
-        {
-          "name": "seed",
-          "type": {
-            "type": "int"
-          },
-          "default": 0,
-          "title": "Seed",
-          "min": 0.0,
-          "max": 1000000.0
-        },
-        {
-          "name": "guidance_scale",
-          "type": {
-            "type": "float"
-          },
-          "default": 7.0,
-          "title": "Guidance Scale",
-          "min": 1.0,
-          "max": 30.0
-        },
-        {
-          "name": "num_inference_steps",
-          "type": {
-            "type": "int"
-          },
-          "default": 30,
-          "title": "Num Inference Steps",
-          "min": 1.0,
-          "max": 100.0
-        },
-        {
-          "name": "width",
-          "type": {
-            "type": "int"
-          },
-          "default": 768,
-          "title": "Width",
-          "min": 64.0,
-          "max": 2048.0
-        },
-        {
-          "name": "height",
-          "type": {
-            "type": "int"
-          },
-          "default": 768,
-          "title": "Height",
-          "min": 64.0,
-          "max": 2048.0
-        },
-        {
-          "name": "scheduler",
-          "type": {
-            "type": "enum",
-            "values": [
-              "normal",
-              "karras",
-              "exponential",
-              "sgm_uniform",
-              "simple",
-              "ddim_uniform",
-              "beta",
-              "linear_quadratic"
-            ],
-            "type_name": "nodetool.nodes.comfy.enums.Scheduler"
-          },
-          "default": "exponential",
-          "title": "Scheduler"
-        },
-        {
-          "name": "sampler",
-          "type": {
-            "type": "enum",
-            "values": [
-              "ddim",
-              "ddpm",
-              "dpm_2",
-              "dpm_2_ancestral",
-              "dpm_adaptive",
-              "dpm_fast",
-              "dpmpp_2m",
-              "dpmpp_2m_sde",
-              "dpmpp_2m_sde_gpu",
-              "dpmpp_2s_ancestral",
-              "dpmpp_3m_sde",
-              "dpmpp_3m_sde_gpu",
-              "dpmpp_sde",
-              "dpmpp_sde_gpu",
-              "euler",
-              "euler_ancestral",
-              "heun",
-              "heunpp2",
-              "lcm",
-              "lms",
-              "uni_pc",
-              "uni_pc_bh2"
-            ],
-            "type_name": "nodetool.nodes.comfy.enums.Sampler"
-          },
-          "default": "euler_ancestral",
-          "title": "Sampler"
-        },
-        {
-          "name": "loras",
-          "type": {
-            "type": "list",
-            "type_args": [
-              {
-                "type": "comfy.lora_config"
-              }
-            ]
-          },
-          "default": [],
-          "title": "Loras",
-          "description": "List of LoRA models to apply"
-        }
-      ],
-      "outputs": [
-        {
-          "type": {
-            "type": "image"
-          },
-          "name": "output"
-        }
-      ],
-      "recommended_models": [
-        {
-          "id": "stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors",
-          "type": "hf.text_to_image",
-          "name": "stabilityai/stable-diffusion-xl-base-1.0",
-          "repo_id": "stabilityai/stable-diffusion-xl-base-1.0",
-          "path": "sd_xl_base_1.0.safetensors",
-          "size_on_disk": 6938078334,
-          "pipeline_tag": "text-to-image",
-          "tags": [
-            "diffusers",
-            "onnx",
-            "safetensors",
-            "text-to-image",
-            "stable-diffusion",
-            "arxiv:2307.01952",
-            "arxiv:2211.01324",
-            "arxiv:2108.01073",
-            "arxiv:2112.10752",
-            "license:openrail++",
-            "autotrain_compatible",
-            "endpoints_compatible",
-            "diffusers:StableDiffusionXLPipeline",
-            "deploy:azure",
-            "region:us"
-          ],
-          "has_model_index": true,
-          "downloads": 2729785,
-          "likes": 7139
-        },
-        {
-          "id": "Lykon/dreamshaper-xl-v2-turbo:DreamShaperXL_Turbo_v2_1.safetensors",
-          "type": "hf.text_to_image",
-          "name": "Lykon/dreamshaper-xl-v2-turbo",
-          "repo_id": "Lykon/dreamshaper-xl-v2-turbo",
-          "path": "DreamShaperXL_Turbo_v2_1.safetensors",
-          "size_on_disk": 6939220250,
-          "pipeline_tag": "text-to-image",
-          "tags": [
-            "diffusers",
-            "safetensors",
-            "stable-diffusion",
-            "stable-diffusion-diffusers",
-            "stable-diffusion-xl",
-            "stable-diffusion-xl-turbo",
-            "text-to-image",
-            "art",
-            "artistic",
-            "anime",
-            "dreamshaper",
-            "turbo",
-            "lcm",
-            "en",
-            "license:openrail++",
-            "autotrain_compatible",
-            "endpoints_compatible",
-            "diffusers:StableDiffusionXLPipeline",
-            "region:us"
-          ],
-          "has_model_index": true,
-          "downloads": 57803,
-          "likes": 69
-        },
-        {
-          "id": "RunDiffusion/Juggernaut-XL-v9:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
-          "type": "hf.text_to_image",
-          "name": "RunDiffusion/Juggernaut-XL-v9",
-          "repo_id": "RunDiffusion/Juggernaut-XL-v9",
-          "path": "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
-          "size_on_disk": 7105348188,
-          "pipeline_tag": "text-to-image",
-          "tags": [
-            "diffusers",
-            "art",
-            "people",
-            "diffusion",
-            "Cinematic",
-            "Photography",
-            "Landscape",
-            "Interior",
-            "Food",
-            "Car",
-            "Wildlife",
-            "Architecture",
-            "text-to-image",
-            "en",
-            "base_model:stabilityai/stable-diffusion-xl-base-1.0",
-            "base_model:finetune:stabilityai/stable-diffusion-xl-base-1.0",
-            "license:creativeml-openrail-m",
-            "autotrain_compatible",
-            "endpoints_compatible",
-            "diffusers:StableDiffusionXLPipeline",
-            "region:us"
-          ],
-          "has_model_index": true,
-          "downloads": 306828,
-          "likes": 268
-        },
-        {
-          "id": "dataautogpt3/ProteusV0.3:ProteusV0.3.safetensors",
-          "type": "hf.text_to_image",
-          "name": "dataautogpt3/ProteusV0.3",
-          "repo_id": "dataautogpt3/ProteusV0.3",
-          "path": "ProteusV0.3.safetensors",
-          "size_on_disk": 6938040736,
-          "pipeline_tag": "text-to-image",
-          "tags": [
-            "diffusers",
-            "text-to-image",
-            "license:gpl-3.0",
-            "autotrain_compatible",
-            "endpoints_compatible",
-            "diffusers:StableDiffusionXLPipeline",
-            "region:us"
-          ],
-          "has_model_index": true,
-          "downloads": 291372,
-          "likes": 94
-        },
-        {
-          "id": "John6666/prefect-illustrious-xl-v3-sdxl",
-          "type": "hf.text_to_image",
-          "name": "John6666/prefect-illustrious-xl-v3-sdxl",
-          "repo_id": "John6666/prefect-illustrious-xl-v3-sdxl",
-          "size_on_disk": 6941387072,
-          "pipeline_tag": "text-to-image",
-          "tags": [
-            "diffusers",
-            "safetensors",
-            "text-to-image",
-            "stable-diffusion",
-            "stable-diffusion-xl",
-            "anime",
-            "girls",
-            "styles",
-            "lighting",
-            "texture",
-            "clean",
-            "color balance",
-            "prompt understanding",
-            "merge",
-            "noobai",
-            "Illustrious XL v1.0",
-            "illustrious",
-            "en",
-            "base_model:Laxhar/noobai-XL-1.1",
-            "base_model:merge:Laxhar/noobai-XL-1.1",
-            "base_model:OnomaAIResearch/Illustrious-XL-v1.0",
-            "base_model:merge:OnomaAIResearch/Illustrious-XL-v1.0",
-            "license:other",
-            "autotrain_compatible",
-            "endpoints_compatible",
-            "diffusers:StableDiffusionXLPipeline",
-            "region:us"
-          ],
-          "has_model_index": true,
-          "downloads": 267640,
-          "likes": 0
-        },
-        {
-          "id": "cagliostrolab/animagine-xl-4.0:animagine-xl-4.0-opt.safetensors",
-          "type": "hf.text_to_image",
-          "name": "cagliostrolab/animagine-xl-4.0",
-          "repo_id": "cagliostrolab/animagine-xl-4.0",
-          "path": "animagine-xl-4.0-opt.safetensors",
-          "size_on_disk": 6938350040,
-          "pipeline_tag": "text-to-image",
-          "tags": [
-            "diffusers",
-            "safetensors",
-            "text-to-image",
-            "stable-diffusion",
-            "stable-diffusion-xl",
-            "en",
-            "base_model:stabilityai/stable-diffusion-xl-base-1.0",
-            "base_model:finetune:stabilityai/stable-diffusion-xl-base-1.0",
-            "license:openrail++",
-            "autotrain_compatible",
-            "endpoints_compatible",
-            "diffusers:StableDiffusionXLPipeline",
-            "region:us"
-          ],
-          "has_model_index": true,
-          "downloads": 198773,
-          "likes": 354
-        },
-        {
-          "id": "SG161222/RealVisXL_V5.0:RealVisXL_V5.0_fp16.safetensors",
-          "type": "hf.text_to_image",
-          "name": "SG161222/RealVisXL_V5.0",
-          "repo_id": "SG161222/RealVisXL_V5.0",
-          "path": "RealVisXL_V5.0_fp16.safetensors",
-          "size_on_disk": 6938065488,
-          "pipeline_tag": "text-to-image",
-          "tags": [
-            "diffusers",
-            "safetensors",
-            "license:openrail++",
-            "autotrain_compatible",
-            "endpoints_compatible",
-            "diffusers:StableDiffusionXLPipeline",
-            "region:us"
-          ],
-          "has_model_index": true,
-          "downloads": 51502,
-          "likes": 115
-        }
-      ],
-      "basic_fields": [
-        "model",
-        "prompt",
-        "negative_prompt",
-        "seed",
-        "guidance_scale",
-        "num_inference_steps",
-        "width",
-        "height",
-        "scheduler",
-        "sampler",
-        "loras"
       ]
     }
   ]
