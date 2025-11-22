@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import nullcontext
 from typing import List, Tuple
 
 import comfy
 import comfy.sd
 import comfy.utils
+import comfy.model_management
 import folder_paths
 import numpy as np
 import torch
@@ -217,56 +219,59 @@ class StableDiffusion(BaseNode):
         if self._model is None or self._clip is None or self._vae is None:
             raise RuntimeError("Model components must be loaded before processing.")
 
-        with comfy_progress(context, self, self._model):
-            unet = ModelPatcher.clone(self._model)
-            clip = self._clip.clone()
-            vae = self._vae
+        with torch.inference_mode():
+            with comfy_progress(context, self, self._model):
+                unet = ModelPatcher.clone(self._model)
+                clip = self._clip.clone()
+                vae = self._vae
 
-            unet, clip = self.apply_loras(unet, clip)
-            positive_conditioning, negative_conditioning = self.get_conditioning(clip)
+                unet, clip = self.apply_loras(unet, clip)
+                positive_conditioning, negative_conditioning = self.get_conditioning(
+                    clip
+                )
 
-            if (
-                isinstance(self.model, HFStableDiffusionCheckpoint)
-                and self.width >= 1024
-                and self.height >= 1024
-            ):
-                num_lowres_steps = self.num_inference_steps // 4
-                num_hires_steps = self.num_inference_steps - num_lowres_steps
-                initial_width, initial_height = self.width // 2, self.height // 2
-            else:
-                num_hires_steps = 0
-                num_lowres_steps = self.num_inference_steps
-                initial_width, initial_height = self.width, self.height
+                if (
+                    isinstance(self.model, HFStableDiffusionCheckpoint)
+                    and self.width >= 1024
+                    and self.height >= 1024
+                ):
+                    num_lowres_steps = self.num_inference_steps // 4
+                    num_hires_steps = self.num_inference_steps - num_lowres_steps
+                    initial_width, initial_height = self.width // 2, self.height // 2
+                else:
+                    num_hires_steps = 0
+                    num_lowres_steps = self.num_inference_steps
+                    initial_width, initial_height = self.width, self.height
 
-            latent = self.get_empty_latent(initial_width, initial_height)
-
-            sampled_latent = self.sample(
-                unet,
-                latent,
-                positive_conditioning,
-                negative_conditioning,
-                num_lowres_steps,
-            )
-
-            if num_hires_steps > 0:
-                hires_latent = LatentUpscale().upscale(
-                    samples=sampled_latent,
-                    upscale_method="bilinear",
-                    width=self.width,
-                    height=self.height,
-                    crop=False,
-                )[0]
+                latent = self.get_empty_latent(initial_width, initial_height)
 
                 sampled_latent = self.sample(
                     unet,
-                    hires_latent,
+                    latent,
                     positive_conditioning,
                     negative_conditioning,
-                    num_hires_steps,
+                    num_lowres_steps,
                 )
 
-            decoded_image = VAEDecodeTiled().decode(vae, sampled_latent, 512)[0]
-            return await context.image_from_tensor(decoded_image)
+                if num_hires_steps > 0:
+                    hires_latent = LatentUpscale().upscale(
+                        samples=sampled_latent,
+                        upscale_method="bilinear",
+                        width=self.width,
+                        height=self.height,
+                        crop=False,
+                    )[0]
+
+                    sampled_latent = self.sample(
+                        unet,
+                        hires_latent,
+                        positive_conditioning,
+                        negative_conditioning,
+                        num_hires_steps,
+                    )
+
+                decoded_image = VAEDecodeTiled().decode(vae, sampled_latent, 512)[0]
+                return await context.image_from_tensor(decoded_image)
 
 
 class StableDiffusionXL(StableDiffusion):
@@ -493,32 +498,35 @@ class Flux(BaseNode):
         assert self._clip is not None, "CLIP must be loaded."
         assert self._vae is not None, "VAE must be loaded."
 
-        with comfy_progress(context, self, self._model):
-            latent = EmptySD3LatentImage().generate(self.width, self.height, 1)[0]
+        with torch.inference_mode():
+            with comfy_progress(context, self, self._model):
+                latent = EmptySD3LatentImage().generate(self.width, self.height, 1)[0]
 
-            positive = CLIPTextEncode().encode(self._clip, self.prompt)[0]
-            negative = CLIPTextEncode().encode(self._clip, self.negative_prompt)[0]
+                positive = CLIPTextEncode().encode(self._clip, self.prompt)[0]
+                negative = CLIPTextEncode().encode(self._clip, self.negative_prompt)[0]
 
-            positive = FluxGuidance().append(positive, self.guidance_scale)[0]
+                positive = FluxGuidance().append(positive, self.guidance_scale)[0]
 
-            repo_id = self.model.repo_id or ""
-            steps = 4 if "schnell" in repo_id else self.steps
+                repo_id = self.model.repo_id or ""
+                steps = 4 if "schnell" in repo_id else self.steps
 
-            sampled_latent = KSampler().sample(
-                model=self._model,
-                seed=self.seed,
-                steps=steps,
-                cfg=self.guidance_scale,
-                sampler_name=self.sampler.value,
-                scheduler=self.scheduler.value,
-                positive=positive,
-                negative=negative,
-                latent_image=latent,
-                denoise=self.denoise,
-            )[0]
+                sampled_latent = KSampler().sample(
+                    model=self._model,
+                    seed=self.seed,
+                    steps=steps,
+                    cfg=self.guidance_scale,
+                    sampler_name=self.sampler.value,
+                    scheduler=self.scheduler.value,
+                    positive=positive,
+                    negative=negative,
+                    latent_image=latent,
+                    denoise=self.denoise,
+                )[0]
 
-            decoded_image = VAEDecodeTiled().decode(self._vae, sampled_latent, 512)[0]
-            return await context.image_from_tensor(decoded_image)
+                decoded_image = VAEDecodeTiled().decode(
+                    self._vae, sampled_latent, 512
+                )[0]
+                return await context.image_from_tensor(decoded_image)
 
 
 class FluxFP8(BaseNode):
@@ -632,32 +640,33 @@ class FluxFP8(BaseNode):
         if self._model is None or self._clip is None or self._vae is None:
             raise RuntimeError("Model components must be loaded before processing.")
 
-        with comfy_progress(context, self, self._model):
-            unet = ModelPatcher.clone(self._model)
-            clip = self._clip.clone()
-            vae = self._vae
-            unet, clip = self.apply_loras(unet, clip)
+        with torch.inference_mode():
+            with comfy_progress(context, self, self._model):
+                unet = ModelPatcher.clone(self._model)
+                clip = self._clip.clone()
+                vae = self._vae
+                unet, clip = self.apply_loras(unet, clip)
 
-            latent = EmptySD3LatentImage().generate(self.width, self.height, 1)[0]
-            positive = CLIPTextEncode().encode(clip, self.prompt)[0]
-            negative = CLIPTextEncode().encode(clip, self.negative_prompt)[0]
-            positive = FluxGuidance().append(positive, self.guidance_scale)[0]
+                latent = EmptySD3LatentImage().generate(self.width, self.height, 1)[0]
+                positive = CLIPTextEncode().encode(clip, self.prompt)[0]
+                negative = CLIPTextEncode().encode(clip, self.negative_prompt)[0]
+                positive = FluxGuidance().append(positive, self.guidance_scale)[0]
 
-            sampled_latent = KSampler().sample(
-                model=unet,
-                seed=self.seed,
-                steps=self.steps,
-                cfg=self.sampler_cfg,
-                sampler_name=self.sampler.value,
-                scheduler=self.scheduler.value,
-                positive=positive,
-                negative=negative,
-                latent_image=latent,
-                denoise=self.denoise,
-            )[0]
+                sampled_latent = KSampler().sample(
+                    model=unet,
+                    seed=self.seed,
+                    steps=self.steps,
+                    cfg=self.sampler_cfg,
+                    sampler_name=self.sampler.value,
+                    scheduler=self.scheduler.value,
+                    positive=positive,
+                    negative=negative,
+                    latent_image=latent,
+                    denoise=self.denoise,
+                )[0]
 
-            decoded_image = VAEDecodeTiled().decode(vae, sampled_latent, 512)[0]
-            return await context.image_from_tensor(decoded_image)
+                decoded_image = VAEDecodeTiled().decode(vae, sampled_latent, 512)[0]
+                return await context.image_from_tensor(decoded_image)
 
 
 class QwenImage(BaseNode):
@@ -917,25 +926,52 @@ class QwenImage(BaseNode):
         if self._model is None or self._clip is None or self._vae is None:
             raise RuntimeError("Model components must be loaded before processing.")
 
-        with comfy_progress(context, self, self._model):
-            unet = ModelPatcher.clone(self._model)
-            clip = self._clip.clone()
-            unet, clip = self.apply_loras(unet, clip)
+        with torch.inference_mode():
+            with comfy_progress(context, self, self._model):
+                base_unet = self._model
+                base_clip = self._clip
+                unet = ModelPatcher.clone(base_unet) if self.loras else base_unet
+                clip = base_clip.clone() if self.loras else base_clip
+                if self.loras:
+                    unet, clip = self.apply_loras(unet, clip)
 
-            latent = self.get_empty_latent()
+                device = getattr(unet, "load_device", None) or getattr(
+                    unet, "device", None
+                )
+                dtype = getattr(unet, "dtype", None) or torch.float16
+                autocast_ctx = (
+                    torch.autocast(device_type=device.type, dtype=dtype)
+                    if device is not None and hasattr(device, "type")
+                    else nullcontext()
+                )
 
-            positive_conditioning, negative_conditioning = self.get_conditioning(clip)
+                with autocast_ctx:
+                    latent = self.get_empty_latent()
 
-            sampled_latent = self.sample(
-                unet,
-                latent,
-                positive_conditioning,
-                negative_conditioning,
-                self.steps,
-            )
+                    positive_conditioning, negative_conditioning = (
+                        self.get_conditioning(clip)
+                    )
 
-            decoded_image = VAEDecodeTiled().decode(self._vae, sampled_latent, 512)[0]
-            return await context.image_from_tensor(decoded_image)
+                    # Free CLIP weights once conditioning is built to reduce VRAM.
+                    del clip
+                    soft_empty = getattr(
+                        comfy.model_management, "soft_empty_cache", None
+                    )
+                    if callable(soft_empty):
+                        soft_empty()
+
+                    sampled_latent = self.sample(
+                        unet,
+                        latent,
+                        positive_conditioning,
+                        negative_conditioning,
+                        self.steps,
+                    )
+
+                    decoded_image = VAEDecodeTiled().decode(
+                        self._vae, sampled_latent, 512
+                    )[0]
+                    return await context.image_from_tensor(decoded_image)
 
 __all__ = [
     "StableDiffusion",
