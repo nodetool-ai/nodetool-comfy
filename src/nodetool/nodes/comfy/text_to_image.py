@@ -15,9 +15,6 @@ from comfy.model_patcher import ModelPatcher
 from comfy_extras.nodes_flux import FluxGuidance
 from comfy_extras.nodes_qwen import TextEncodeQwenImageEdit
 from comfy_extras.nodes_sd3 import EmptySD3LatentImage
-from custom_nodes.gguf.loader import gguf_sd_loader
-from custom_nodes.gguf.ops import GGMLOps
-from custom_nodes.gguf.nodes import GGUFModelPatcher
 from huggingface_hub import try_to_load_from_cache
 from nodes import (
     CLIPTextEncode,
@@ -58,22 +55,6 @@ from nodetool.nodes.comfy.utils import comfy_progress
 from nodetool.workflows.base_node import BaseNode
 from nodetool.workflows.processing_context import ProcessingContext
 from pydantic import Field
-
-
-def _load_flux_gguf_unet(ckpt_path: str) -> ModelPatcher:
-    ops = GGMLOps()
-    sd = gguf_sd_loader(ckpt_path)
-    model = comfy.sd.load_diffusion_model_state_dict(
-        sd, model_options={"custom_operations": ops}
-    )
-    if model is None:
-        raise RuntimeError(
-            f"Could not detect model type for GGUF checkpoint: {ckpt_path}"
-        )
-
-    model = GGUFModelPatcher.clone(model)  # type: ignore[assignment]
-    model.patch_on_device = False
-    return model
 
 
 class StableDiffusion(BaseNode):
@@ -423,19 +404,14 @@ class Flux(BaseNode):
         cache_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
 
         if cache_path is not None:
-            if self.model.path.lower().endswith(".gguf"):
-                self._model = _load_flux_gguf_unet(cache_path)
-                self._clip = None
-                self._vae = None
-            else:
-                self._model, self._clip, self._vae, _ = (
-                    comfy.sd.load_checkpoint_guess_config(
-                        cache_path,
-                        output_vae=True,
-                        output_clip=True,
-                        embedding_directory=folder_paths.get_folder_paths("embeddings"),
-                    )
+            self._model, self._clip, self._vae, _ = (
+                comfy.sd.load_checkpoint_guess_config(
+                    cache_path,
+                    output_vae=True,
+                    output_clip=True,
+                    embedding_directory=folder_paths.get_folder_paths("embeddings"),
                 )
+            )
 
         def _resolve_clip(path: str | None, repo_id: str):
             if path is None:
@@ -617,17 +593,12 @@ class FluxFP8(BaseNode):
                 f"Model checkpoint not found for {self.model.repo_id}/{self.model.path}"
             )
 
-        if self.model.path.lower().endswith(".gguf"):
-            self._model = _load_flux_gguf_unet(cache_path)
-            self._clip = None
-            self._vae = None
-        else:
-            self._model, self._clip, self._vae, _ = comfy.sd.load_checkpoint_guess_config(
-                cache_path,
-                output_vae=True,
-                output_clip=True,
-                embedding_directory=folder_paths.get_folder_paths("embeddings"),
-            )
+        self._model, self._clip, self._vae, _ = comfy.sd.load_checkpoint_guess_config(
+            cache_path,
+            output_vae=True,
+            output_clip=True,
+            embedding_directory=folder_paths.get_folder_paths("embeddings"),
+        )
 
         if self._model is None or self._clip is None or self._vae is None:
             raise RuntimeError("Failed to load Flux fp8 checkpoint (UNet/CLIP/VAE).")
@@ -877,15 +848,12 @@ class QwenImage(BaseNode):
                 f"Model checkpoint not found for {self.model.repo_id}/{self.model.path}"
             )
 
-        if self.model.path.lower().endswith(".gguf"):
-            self._model = _load_flux_gguf_unet(cache_path)
-        else:
-            self._model, self._clip, self._vae, _ = comfy.sd.load_checkpoint_guess_config(
-                cache_path,
-                output_vae=True,
-                output_clip=True,
-                embedding_directory=folder_paths.get_folder_paths("embeddings"),
-            )
+        self._model, self._clip, self._vae, _ = comfy.sd.load_checkpoint_guess_config(
+            cache_path,
+            output_vae=True,
+            output_clip=True,
+            embedding_directory=folder_paths.get_folder_paths("embeddings"),
+        )
 
         if self._clip is None:
             self._clip = self._load_clip()

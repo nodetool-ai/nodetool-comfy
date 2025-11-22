@@ -60,7 +60,6 @@ from nodetool.nodes.comfy.enums import Sampler, Scheduler
 from nodetool.nodes.comfy.utils import comfy_progress
 from nodetool.nodes.comfy.text_to_image import (
     StableDiffusion as TextToImageSD,
-    _load_flux_gguf_unet,
 )
 from nodetool.workflows.base_node import BaseNode
 from nodetool.workflows.processing_context import ProcessingContext
@@ -376,19 +375,14 @@ class FluxKontext(BaseNode):
         logger.info(f"Cache path: {cache_path}")
 
         if cache_path is not None:
-            if self.model.path.lower().endswith(".gguf"):
-                self._model = _load_flux_gguf_unet(cache_path)
-                self._clip = None
-                self._vae = None
-            else:
-                self._model, self._clip, self._vae, _ = (
-                    comfy.sd.load_checkpoint_guess_config(
-                        cache_path,
-                        output_vae=True,
-                        output_clip=True,
-                        embedding_directory=folder_paths.get_folder_paths("embeddings"),
-                    )
+            self._model, self._clip, self._vae, _ = (
+                comfy.sd.load_checkpoint_guess_config(
+                    cache_path,
+                    output_vae=True,
+                    output_clip=True,
+                    embedding_directory=folder_paths.get_folder_paths("embeddings"),
                 )
+            )
 
         if self._clip is None or self._vae is None:
             import comfy.utils
@@ -861,15 +855,12 @@ class QwenImageEdit(BaseNode):
                 f"Model checkpoint not found for {self.model.repo_id}/{self.model.path}"
             )
 
-        if self.model.path.lower().endswith(".gguf"):
-            self._model = _load_flux_gguf_unet(cache_path)
-        else:
-            self._model, self._clip, self._vae, _ = comfy.sd.load_checkpoint_guess_config(
-                cache_path,
-                output_vae=True,
-                output_clip=True,
-                embedding_directory=folder_paths.get_folder_paths("embeddings"),
-            )
+        self._model, self._clip, self._vae, _ = comfy.sd.load_checkpoint_guess_config(
+            cache_path,
+            output_vae=True,
+            output_clip=True,
+            embedding_directory=folder_paths.get_folder_paths("embeddings"),
+        )
 
         if self._clip is None:
             self._clip = self._load_clip()
