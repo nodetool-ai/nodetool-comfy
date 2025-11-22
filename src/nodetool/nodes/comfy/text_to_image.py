@@ -29,10 +29,15 @@ from nodes import (
 from nodetool.ml.core.model_manager import ModelManager
 from nodetool.metadata.types import (
     HFCLIP,
-    HFQwenImage,
-    HFQwenImageEdit,
-    HFTextToImage,
-    HFUnet,
+    HFT5,
+    HFFluxCheckpoint,
+    HFFluxFP8Checkpoint,
+    HFQwenImageCheckpoint,
+    HFQwenImageEditCheckpoint,
+    HFQwenVL,
+    HFStableDiffusion3Checkpoint,
+    HFStableDiffusionCheckpoint,
+    HFStableDiffusionXLCheckpoint,
     HFVAE,
     ImageRef,
     LoRAConfig,
@@ -64,7 +69,7 @@ def _load_flux_gguf_unet(ckpt_path: str) -> ModelPatcher:
             f"Could not detect model type for GGUF checkpoint: {ckpt_path}"
         )
 
-    model = GGUFModelPatcher.clone(model)
+    model = GGUFModelPatcher.clone(model)  # type: ignore[assignment]
     model.patch_on_device = False
     return model
 
@@ -77,8 +82,8 @@ class StableDiffusion(BaseNode):
     This node is strictly text-to-image: it never consumes an input image.
     """
 
-    model: HFTextToImage = Field(
-        default=HFTextToImage(), description="The model to use."
+    model: HFStableDiffusionCheckpoint = Field(
+        default=HFStableDiffusionCheckpoint(), description="The model to use."
     )
     prompt: str = Field(default="", description="The prompt to use.")
     negative_prompt: str = Field(default="", description="The negative prompt to use.")
@@ -98,8 +103,8 @@ class StableDiffusion(BaseNode):
     _vae: comfy.sd.VAE | None = None
 
     @classmethod
-    def get_recommended_models(cls) -> list[HFTextToImage]:
-        return HF_STABLE_DIFFUSION_MODELS
+    def get_recommended_models(cls) -> list[HFStableDiffusionCheckpoint]:
+        return HF_STABLE_DIFFUSION_MODELS  # type: ignore[return-value]
 
     @classmethod
     def get_basic_fields(cls) -> list[str]:
@@ -221,7 +226,7 @@ class StableDiffusion(BaseNode):
             positive_conditioning, negative_conditioning = self.get_conditioning(clip)
 
             if (
-                isinstance(self.model, HFTextToImage)
+                isinstance(self.model, HFStableDiffusionCheckpoint)
                 and self.width >= 1024
                 and self.height >= 1024
             ):
@@ -272,13 +277,13 @@ class StableDiffusionXL(StableDiffusion):
     Text-only SDXL variant; no input image.
     """
 
-    model: HFTextToImage = Field(
-        default=HFTextToImage(), description="The model to use."
+    model: HFStableDiffusionXLCheckpoint = Field(
+        default=HFStableDiffusionXLCheckpoint(), description="The model to use."
     )
 
     @classmethod
-    def get_recommended_models(cls) -> list[HFTextToImage]:
-        return HF_STABLE_DIFFUSION_XL_MODELS
+    def get_recommended_models(cls) -> list[HFStableDiffusionXLCheckpoint]:
+        return HF_STABLE_DIFFUSION_XL_MODELS  # type: ignore[return-value]
 
 
 class StableDiffusion3(StableDiffusion):
@@ -295,9 +300,9 @@ class StableDiffusion3(StableDiffusion):
         return "Stable Diffusion 3.5"
 
     @classmethod
-    def get_recommended_models(cls) -> list[HFTextToImage]:
+    def get_recommended_models(cls) -> list[HFStableDiffusion3Checkpoint]:
         return [
-            HFTextToImage(
+            HFStableDiffusion3Checkpoint(
                 repo_id="Comfy-Org/stable-diffusion-3.5-fp8",
                 path="sd3.5_large_fp8_scaled.safetensors",
             ),
@@ -315,18 +320,22 @@ class Flux(BaseNode):
     ComfyUI-native Flux implementation in the comfy.text_to_image namespace.
     """
 
-    unet_model: HFTextToImage = Field(
-        default=HFTextToImage(), description="The UNet/diffusion model to use."
+    model: HFFluxCheckpoint = Field(
+        default=HFFluxCheckpoint(
+            repo_id="Comfy-Org/flux1-dev",
+            path="flux1-dev-fp8.safetensors",
+        ),
+        description="The UNet/diffusion model to use.",
     )
-    clip_model: HFCLIP = Field(
+    text_encoder: HFCLIP = Field(
         default=HFCLIP(
             repo_id=FLUX_CLIP_L.repo_id,
             path=FLUX_CLIP_L.path,
         ),
         description="The primary Flux CLIP checkpoint (clip-l).",
     )
-    clip_model_secondary: HFCLIP = Field(
-        default=HFCLIP(
+    t5_model: HFT5 = Field(
+        default=HFT5(
             repo_id=FLUX_CLIP_T5XXL.repo_id,
             path=FLUX_CLIP_T5XXL.path,
         ),
@@ -355,7 +364,7 @@ class Flux(BaseNode):
         return "Flux"
 
     @classmethod
-    def get_recommended_models(cls) -> list[HFUnet | HFTextToImage]:
+    def get_recommended_models(cls) -> list[HFFluxCheckpoint | HFCLIP | HFVAE]:
         return (
             [FLUX_VAE, FLUX_CLIP_L, FLUX_CLIP_T5XXL]
             + FLUX_DEV_MODELS
@@ -365,9 +374,9 @@ class Flux(BaseNode):
     @classmethod
     def get_basic_fields(cls) -> list[str]:
         return [
-            "unet_model",
-            "clip_model",
-            "clip_model_secondary",
+            "model",
+            "text_encoder",
+            "t5_model",
             "vae_model",
             "prompt",
             "negative_prompt",
@@ -377,35 +386,39 @@ class Flux(BaseNode):
         ]
 
     async def preload_model(self, context: ProcessingContext):
-        if self.unet_model.is_empty():
+        if self.model.is_empty():
             raise ValueError("UNet model must be selected.")
-        if self.clip_model.is_empty() or self.clip_model_secondary.is_empty():
+        if self.text_encoder.is_empty() or self.t5_model.is_empty():
             raise ValueError("Both Flux CLIP models must be selected.")
         if self.vae_model.is_empty():
             raise ValueError("VAE model must be selected.")
 
-        assert self.unet_model.path is not None, "UNet path must be set."
-        assert self.clip_model.path is not None, "CLIP primary path must be set."
-        assert self.clip_model_secondary.path is not None, "CLIP secondary path must be set."
+        assert self.model.path is not None, "UNet path must be set."
+        assert self.text_encoder.path is not None, "CLIP primary path must be set."
+        assert self.t5_model.path is not None, "T5 path must be set."
         assert self.vae_model.path is not None, "VAE path must be set."
 
         self._model = ModelManager.get_model(
-            self.unet_model.repo_id, "unet", self.unet_model.path
+            self.model.repo_id, "unet", self.model.path
         )
         self._clip = ModelManager.get_model(
-            self.clip_model.repo_id, "clip", self.clip_model.path
+            self.text_encoder.repo_id, "clip", self.text_encoder.path
         )
         self._vae = ModelManager.get_model(
             self.vae_model.repo_id, "vae", self.vae_model.path
         )
 
+        # Older cached VAE instances may just be placeholders without weights.
+        if getattr(self._vae, "first_stage_model", None) is None:
+            self._vae = None
+
         if self._model and self._clip and self._vae:
             return
 
-        cache_path = try_to_load_from_cache(self.unet_model.repo_id, self.unet_model.path)
+        cache_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
 
         if cache_path is not None:
-            if self.unet_model.path.lower().endswith(".gguf"):
+            if self.model.path.lower().endswith(".gguf"):
                 self._model = _load_flux_gguf_unet(cache_path)
                 self._clip = None
                 self._vae = None
@@ -429,9 +442,9 @@ class Flux(BaseNode):
             return lp
 
         if self._clip is None:
-            clip_l_path = _resolve_clip(self.clip_model.path, self.clip_model.repo_id)
+            clip_l_path = _resolve_clip(self.text_encoder.path, self.text_encoder.repo_id)
             clip_t5_path = _resolve_clip(
-                self.clip_model_secondary.path, self.clip_model_secondary.repo_id
+                self.t5_model.path, self.t5_model.repo_id
             )
             if clip_l_path is None or clip_t5_path is None:
                 raise ValueError("CLIP model checkpoint(s) not found. Download from Recommended Models.")
@@ -453,18 +466,18 @@ class Flux(BaseNode):
         if self._model:
             ModelManager.set_model(
                 self.id,
-                self.unet_model.repo_id,
+                self.model.repo_id,
                 "unet",
                 self._model,
-                self.unet_model.path,
+                self.model.path,
             )
         if self._clip:
             ModelManager.set_model(
                 self.id,
-                self.clip_model.repo_id,
+                self.text_encoder.repo_id,
                 "clip",
                 self._clip,
-                self.clip_model.path,
+                self.text_encoder.path,
             )
         if self._vae:
             ModelManager.set_model(
@@ -488,7 +501,7 @@ class Flux(BaseNode):
 
             positive = FluxGuidance().append(positive, self.guidance_scale)[0]
 
-            repo_id = self.unet_model.repo_id or ""
+            repo_id = self.model.repo_id or ""
             steps = 4 if "schnell" in repo_id else self.steps
 
             sampled_latent = KSampler().sample(
@@ -508,21 +521,161 @@ class Flux(BaseNode):
             return await context.image_from_tensor(decoded_image)
 
 
+class FluxFP8(BaseNode):
+    """
+    Single-checkpoint Flux fp8 pipeline (clip/vae bundled).
+    image, text-to-image, generative AI, flux
+    """
+
+    model: HFFluxFP8Checkpoint = Field(
+        default=HFFluxFP8Checkpoint(
+            repo_id="Comfy-Org/flux1-dev",
+            path="flux1-dev-fp8.safetensors",
+        ),
+        description="Flux fp8 checkpoint (clip/vae bundled).",
+    )   
+    prompt: str = Field(default="", description="The prompt to use.")
+    negative_prompt: str = Field(default="", description="The negative prompt to use.")
+    width: int = Field(default=1024, ge=64, le=2048, multiple_of=64)
+    height: int = Field(default=1024, ge=64, le=2048, multiple_of=64)
+    steps: int = Field(default=20, ge=1, le=100)
+    guidance_scale: float = Field(default=3.5, ge=0.0, le=30.0)
+    sampler_cfg: float = Field(default=1.0, ge=0.0, le=30.0)
+    seed: int = Field(default=0, ge=0, le=1000000000)
+    denoise: float = Field(default=1.0, ge=0.0, le=1.0)
+    scheduler: Scheduler = Field(default=Scheduler.simple)
+    sampler: Sampler = Field(default=Sampler.euler)
+    loras: List[LoRAConfig] = Field(default=[], description="List of LoRA models to apply.")
+
+    _model: ModelPatcher | None = None
+    _clip: comfy.sd.CLIP | None = None
+    _vae: comfy.sd.VAE | None = None
+
+    @classmethod
+    def get_title(cls) -> str:
+        return "Flux FP8"
+
+    @classmethod
+    def get_recommended_models(cls) -> list[HFFluxFP8Checkpoint]:
+        return [
+            HFFluxFP8Checkpoint(repo_id="Comfy-Org/flux1-dev", path="flux1-dev-fp8.safetensors"),
+            HFFluxFP8Checkpoint(repo_id="Comfy-Org/flux1-schnell", path="flux1-schnell-fp8.safetensors"),
+        ]
+
+    @classmethod
+    def get_basic_fields(cls) -> list[str]:
+        return [
+            "model",
+            "prompt",
+            "negative_prompt",
+            "width",
+            "height",
+            "steps",
+            "guidance_scale",
+            "sampler_cfg",
+            "seed",
+        ]
+
+    def apply_loras(
+        self,
+        unet: ModelPatcher,
+        clip: comfy.sd.CLIP,
+    ) -> Tuple[ModelPatcher, comfy.sd.CLIP]:
+        for lora_config in self.loras:
+            unet, clip = LoraLoader().load_lora(
+                unet,
+                clip,
+                lora_config.lora.name,
+                lora_config.strength,
+                lora_config.strength,
+            )  # type: ignore[assignment]
+        return unet, clip
+
+    async def preload_model(self, context: ProcessingContext):
+        if self.model.is_empty():
+            raise ValueError("Model must be selected.")
+        assert self.model.path is not None, "Model path must be set."
+
+        self._model = ModelManager.get_model(self.model.repo_id, "unet", self.model.path)
+        self._clip = ModelManager.get_model(self.model.repo_id, "clip", self.model.path)
+        self._vae = ModelManager.get_model(self.model.repo_id, "vae", self.model.path)
+
+        if self._model and self._clip and self._vae:
+            return
+
+        cache_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
+        if cache_path is None:
+            raise ValueError(
+                f"Model checkpoint not found for {self.model.repo_id}/{self.model.path}"
+            )
+
+        if self.model.path.lower().endswith(".gguf"):
+            self._model = _load_flux_gguf_unet(cache_path)
+            self._clip = None
+            self._vae = None
+        else:
+            self._model, self._clip, self._vae, _ = comfy.sd.load_checkpoint_guess_config(
+                cache_path,
+                output_vae=True,
+                output_clip=True,
+                embedding_directory=folder_paths.get_folder_paths("embeddings"),
+            )
+
+        if self._model is None or self._clip is None or self._vae is None:
+            raise RuntimeError("Failed to load Flux fp8 checkpoint (UNet/CLIP/VAE).")
+
+        ModelManager.set_model(self.id, self.model.repo_id, "unet", self._model, self.model.path)
+        ModelManager.set_model(self.id, self.model.repo_id, "clip", self._clip, self.model.path)
+        ModelManager.set_model(self.id, self.model.repo_id, "vae", self._vae, self.model.path)
+
+    async def process(self, context: ProcessingContext) -> ImageRef:
+        if self._model is None or self._clip is None or self._vae is None:
+            raise RuntimeError("Model components must be loaded before processing.")
+
+        with comfy_progress(context, self, self._model):
+            unet = ModelPatcher.clone(self._model)
+            clip = self._clip.clone()
+            vae = self._vae
+            unet, clip = self.apply_loras(unet, clip)
+
+            latent = EmptySD3LatentImage().generate(self.width, self.height, 1)[0]
+            positive = CLIPTextEncode().encode(clip, self.prompt)[0]
+            negative = CLIPTextEncode().encode(clip, self.negative_prompt)[0]
+            positive = FluxGuidance().append(positive, self.guidance_scale)[0]
+
+            sampled_latent = KSampler().sample(
+                model=unet,
+                seed=self.seed,
+                steps=self.steps,
+                cfg=self.sampler_cfg,
+                sampler_name=self.sampler.value,
+                scheduler=self.scheduler.value,
+                positive=positive,
+                negative=negative,
+                latent_image=latent,
+                denoise=self.denoise,
+            )[0]
+
+            decoded_image = VAEDecodeTiled().decode(vae, sampled_latent, 512)[0]
+            return await context.image_from_tensor(decoded_image)
+
+
 class QwenImage(BaseNode):
     """
     Generates images from text prompts using Qwen-Image.
     image, text-to-image, generative AI, qwen
     """
 
-    unet_model: HFQwenImage = Field(
-        default=HFQwenImage(
+    model: HFQwenImageCheckpoint = Field(
+        default=HFQwenImageCheckpoint(
             repo_id="Comfy-Org/Qwen-Image_ComfyUI",
-            path="non_official/diffusion_models/qwen_image_distill_full_fp8_e4m3fn.safetensors",
+            path="split_files/diffusion_models/qwen_image_fp8_e4m3fn.safetensors"
+            # path="non_official/diffusion_models/qwen_image_distill_full_fp8_e4m3fn.safetensors",
         ),
         description="The Qwen-Image UNet/diffusion checkpoint.",
     )
-    clip_model: HFCLIP = Field(
-        default=HFCLIP(
+    text_encoder: HFQwenVL = Field(
+        default=HFQwenVL(
             repo_id="Comfy-Org/Qwen-Image_ComfyUI",
             path="split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
         ),
@@ -558,19 +711,12 @@ class QwenImage(BaseNode):
         return "Qwen-Image"
 
     @classmethod
-    def get_recommended_models(cls) -> list[HFQwenImage | HFCLIP | HFVAE]:
+    def get_recommended_models(cls) -> list[HFQwenImageCheckpoint | HFCLIP | HFVAE]:
         return [
-            HFQwenImage(
+            HFQwenImageCheckpoint(
                 repo_id="Comfy-Org/Qwen-Image_ComfyUI",
-                path="non_official/diffusion_models/qwen_image_distill_full_fp8_e4m3fn.safetensors",
-            ),
-            HFQwenImage(
-                repo_id="city96/Qwen-Image-gguf",
-                path="qwen-image-Q4_K_M.gguf",
-            ),
-            HFQwenImage(
-                repo_id="city96/Qwen-Image-gguf",
-                path="qwen-image-Q8_0.gguf",
+                path="split_files/diffusion_models/qwen_image_fp8_e4m3fn.safetensors",
+                # path="non_official/diffusion_models/qwen_image_distill_full_fp8_e4m3fn.safetensors",
             ),
             HFCLIP(
                 repo_id="Comfy-Org/Qwen-Image_ComfyUI",
@@ -585,8 +731,8 @@ class QwenImage(BaseNode):
     @classmethod
     def get_basic_fields(cls) -> list[str]:
         return [
-            "unet_model",
-            "clip_model",
+            "model",
+            "text_encoder",
             "vae_model",
             "prompt",
             "negative_prompt",
@@ -652,11 +798,11 @@ class QwenImage(BaseNode):
         return None
 
     def _load_clip(self) -> comfy.sd.CLIP:
-        assert self.clip_model.path is not None, "CLIP path must be set."
+        assert self.text_encoder.path is not None, "CLIP path must be set."
         clip_path = self._cached_or_local(
-            self.clip_model.repo_id,
+            self.text_encoder.repo_id,
             (
-                self.clip_model.path,
+                self.text_encoder.path,
                 "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
                 "text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
                 "qwen_2.5_vl_7b_fp8_scaled.safetensors",
@@ -689,37 +835,40 @@ class QwenImage(BaseNode):
         return comfy.sd.VAE(sd=sd)
 
     async def preload_model(self, context: ProcessingContext):
-        if self.unet_model.is_empty():
+        if self.model.is_empty():
             raise ValueError("UNet model must be selected.")
-        if self.clip_model.is_empty():
+        if self.text_encoder.is_empty():
             raise ValueError("CLIP model must be selected.")
         if self.vae_model.is_empty():
             raise ValueError("VAE model must be selected.")
 
-        assert self.unet_model.path is not None, "UNet path must be set."
-        assert self.clip_model.path is not None, "CLIP path must be set."
+        assert self.model.path is not None, "UNet path must be set."
+        assert self.text_encoder.path is not None, "CLIP path must be set."
         assert self.vae_model.path is not None, "VAE path must be set."
 
         self._model = ModelManager.get_model(
-            self.unet_model.repo_id, "unet", self.unet_model.path
+            self.model.repo_id, "unet", self.model.path
         )
         self._clip = ModelManager.get_model(
-            self.clip_model.repo_id, "clip", self.clip_model.path
+            self.text_encoder.repo_id, "clip", self.text_encoder.path
         )
         self._vae = ModelManager.get_model(
             self.vae_model.repo_id, "vae", self.vae_model.path
         )
 
+        if getattr(self._vae, "first_stage_model", None) is None:
+            self._vae = None
+
         if self._model and self._clip and self._vae:
             return
 
-        cache_path = try_to_load_from_cache(self.unet_model.repo_id, self.unet_model.path)
+        cache_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
         if cache_path is None:
             raise ValueError(
-                f"Model checkpoint not found for {self.unet_model.repo_id}/{self.unet_model.path}"
+                f"Model checkpoint not found for {self.model.repo_id}/{self.model.path}"
             )
 
-        if self.unet_model.path.lower().endswith(".gguf"):
+        if self.model.path.lower().endswith(".gguf"):
             self._model = _load_flux_gguf_unet(cache_path)
         else:
             self._model, self._clip, self._vae, _ = comfy.sd.load_checkpoint_guess_config(
@@ -732,7 +881,10 @@ class QwenImage(BaseNode):
         if self._clip is None:
             self._clip = self._load_clip()
 
-        if self._vae is None:
+        # Qwen checkpoints ship the VAE in a separate file, so the auto loader
+        # returns a placeholder VAE with no weights. Swap in the real VAE if
+        # the loaded instance is missing its first_stage_model.
+        if self._vae is None or getattr(self._vae, "first_stage_model", None) is None:
             self._vae = self._load_vae()
 
         assert self._model is not None, "UNet must be loaded."
@@ -741,17 +893,17 @@ class QwenImage(BaseNode):
 
         ModelManager.set_model(
             self.id,
-            self.unet_model.repo_id,
+            self.model.repo_id,
             "unet",
             self._model,
-            self.unet_model.path,
+            self.model.path,
         )
         ModelManager.set_model(
             self.id,
-            self.clip_model.repo_id,
+            self.text_encoder.repo_id,
             "clip",
             self._clip,
-            self.clip_model.path,
+            self.text_encoder.path,
         )
         ModelManager.set_model(
             self.id,
@@ -785,301 +937,14 @@ class QwenImage(BaseNode):
             decoded_image = VAEDecodeTiled().decode(self._vae, sampled_latent, 512)[0]
             return await context.image_from_tensor(decoded_image)
 
-
-class QwenImageEdit(BaseNode):
-    """
-    Performs image editing using Qwen-Image-Edit with reference image conditioning.
-    image, image-editing, generative AI, qwen
-    """
-
-    unet_model: HFQwenImageEdit = Field(
-        default=HFQwenImageEdit(
-            repo_id="Comfy-Org/Qwen-Image-Edit_ComfyUI",
-            path="split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors",
-        ),
-        description="The Qwen-Image-Edit UNet checkpoint.",
-    )
-    clip_model: HFCLIP = Field(
-        default=HFCLIP(
-            repo_id="Comfy-Org/Qwen-Image_ComfyUI",
-            path="split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
-        ),
-        description="The Qwen-Image-Edit CLIP/text encoder checkpoint.",
-    )
-    vae_model: HFVAE = Field(
-        default=HFVAE(
-            repo_id="Comfy-Org/Qwen-Image_ComfyUI",
-            path="split_files/vae/qwen_image_vae.safetensors",
-        ),
-        description="The Qwen-Image-Edit VAE checkpoint.",
-    )
-    input_image: ImageRef = Field(
-        default=ImageRef(), description="The reference image to edit."
-    )
-    prompt: str = Field(default="", description="Editing prompt.")
-    negative_prompt: str = Field(default="", description="Negative prompt.")
-    true_cfg_scale: float = Field(default=1.0, ge=0.0, le=10.0)
-    steps: int = Field(default=20, ge=1, le=100)
-    sampler: Sampler = Field(default=Sampler.euler)
-    scheduler: Scheduler = Field(default=Scheduler.simple)
-    seed: int = Field(default=0, ge=0, le=1000000000)
-    denoise: float = Field(default=1.0, ge=0.0, le=1.0)
-    loras: List[LoRAConfig] = Field(
-        default=[], description="List of LoRA models to apply."
-    )
-
-    _model: ModelPatcher | None = None
-    _clip: comfy.sd.CLIP | None = None
-    _vae: comfy.sd.VAE | None = None
-
-    @classmethod
-    def get_title(cls) -> str:
-        return "Qwen-Image-Edit"
-
-    @classmethod
-    def get_recommended_models(cls) -> list[HFQwenImageEdit | HFCLIP | HFVAE]:
-        return [
-            HFQwenImageEdit(
-                repo_id="Comfy-Org/Qwen-Image-Edit_ComfyUI",
-                path="split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors",
-            ),
-            HFCLIP(
-                repo_id="Comfy-Org/Qwen-Image_ComfyUI",
-                path="split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
-            ),
-            HFVAE(
-                repo_id="Comfy-Org/Qwen-Image_ComfyUI",
-                path="split_files/vae/qwen_image_vae.safetensors",
-            ),
-        ]
-
-    @classmethod
-    def get_basic_fields(cls) -> list[str]:
-        return [
-            "unet_model",
-            "clip_model",
-            "vae_model",
-            "input_image",
-            "prompt",
-            "negative_prompt",
-            "steps",
-            "true_cfg_scale",
-            "sampler",
-            "scheduler",
-            "seed",
-        ]
-
-    def required_inputs(self) -> list[str]:
-        return ["input_image"]
-
-    def apply_loras(
-        self,
-        unet: ModelPatcher,
-        clip: comfy.sd.CLIP,
-    ) -> Tuple[ModelPatcher, comfy.sd.CLIP]:
-        for lora_config in self.loras:
-            unet, clip = LoraLoader().load_lora(
-                unet,
-                clip,
-                lora_config.lora.name,
-                lora_config.strength,
-                lora_config.strength,
-            )  # type: ignore[assignment]
-        return unet, clip
-
-    def _cached_or_local(self, repo_id: str, paths: tuple[str, ...], folder: str):
-        for candidate in paths:
-            cp = try_to_load_from_cache(repo_id, candidate)
-            if cp:
-                return cp
-        for candidate in paths:
-            lp = folder_paths.get_full_path(folder, candidate)
-            if lp:
-                return lp
-        return None
-
-    def _load_clip(self) -> comfy.sd.CLIP:
-        assert self.clip_model.path is not None, "CLIP path must be set."
-        clip_path = self._cached_or_local(
-            self.clip_model.repo_id,
-            (
-                self.clip_model.path,
-                "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
-                "text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
-                "qwen_2.5_vl_7b_fp8_scaled.safetensors",
-            ),
-            "text_encoders",
-        )
-        if clip_path is None:
-            raise ValueError("CLIP checkpoint not found.")
-        return comfy.sd.load_clip(
-            ckpt_paths=[clip_path],
-            embedding_directory=folder_paths.get_folder_paths("embeddings"),
-            clip_type=comfy.sd.CLIPType.QWEN_IMAGE,
-        )
-
-    def _load_vae(self) -> comfy.sd.VAE:
-        assert self.vae_model.path is not None, "VAE path must be set."
-        vae_path = self._cached_or_local(
-            self.vae_model.repo_id,
-            (
-                self.vae_model.path,
-                "split_files/vae/qwen_image_vae.safetensors",
-                "vae/qwen_image_vae.safetensors",
-                "qwen_image_vae.safetensors",
-            ),
-            "vae",
-        )
-        if vae_path is None:
-            raise ValueError("VAE checkpoint not found.")
-        sd = comfy.utils.load_torch_file(vae_path)
-        return comfy.sd.VAE(sd=sd)
-
-    async def preload_model(self, context: ProcessingContext):
-        if self.unet_model.is_empty():
-            raise ValueError("UNet model must be selected.")
-        if self.clip_model.is_empty():
-            raise ValueError("CLIP model must be selected.")
-        if self.vae_model.is_empty():
-            raise ValueError("VAE model must be selected.")
-
-        assert self.unet_model.path is not None, "UNet path must be set."
-        assert self.clip_model.path is not None, "CLIP path must be set."
-        assert self.vae_model.path is not None, "VAE path must be set."
-
-        self._model = ModelManager.get_model(
-            self.unet_model.repo_id, "unet", self.unet_model.path
-        )
-        self._clip = ModelManager.get_model(
-            self.clip_model.repo_id, "clip", self.clip_model.path
-        )
-        self._vae = ModelManager.get_model(
-            self.vae_model.repo_id, "vae", self.vae_model.path
-        )
-
-        if self._model and self._clip and self._vae:
-            return
-
-        cache_path = try_to_load_from_cache(self.unet_model.repo_id, self.unet_model.path)
-        if cache_path is None:
-            raise ValueError(
-                f"Model checkpoint not found for {self.unet_model.repo_id}/{self.unet_model.path}"
-            )
-
-        if self.unet_model.path.lower().endswith(".gguf"):
-            self._model = _load_flux_gguf_unet(cache_path)
-        else:
-            self._model, self._clip, self._vae, _ = comfy.sd.load_checkpoint_guess_config(
-                cache_path,
-                output_vae=True,
-                output_clip=True,
-                embedding_directory=folder_paths.get_folder_paths("embeddings"),
-            )
-
-        if self._clip is None:
-            self._clip = self._load_clip()
-
-        if self._vae is None:
-            self._vae = self._load_vae()
-
-        assert self._model is not None, "UNet must be loaded."
-        assert self._clip is not None, "CLIP must be loaded."
-        assert self._vae is not None, "VAE must be loaded."
-
-        ModelManager.set_model(
-            self.id,
-            self.unet_model.repo_id,
-            "unet",
-            self._model,
-            self.unet_model.path,
-        )
-        ModelManager.set_model(
-            self.id,
-            self.clip_model.repo_id,
-            "clip",
-            self._clip,
-            self.clip_model.path,
-        )
-        ModelManager.set_model(
-            self.id,
-            self.vae_model.repo_id,
-            "vae",
-            self._vae,
-            self.vae_model.path,
-        )
-
-    async def _image_to_tensor(self, context: ProcessingContext) -> torch.Tensor:
-        if self.input_image.is_empty():
-            raise ValueError("input_image must be provided.")
-        pil_image = await context.image_to_pil(self.input_image)
-        image = np.array(pil_image.convert("RGB")).astype(np.float32) / 255.0
-        return torch.from_numpy(image)[None, ...]
-
-    def get_conditioning(
-        self, clip: comfy.sd.CLIP, vae: comfy.sd.VAE, image_tensor: torch.Tensor
-    ) -> Tuple[list, list]:
-        pos = TextEncodeQwenImageEdit().execute(
-            clip=clip, prompt=self.prompt, vae=vae, image=image_tensor
-        )[0]
-        neg = TextEncodeQwenImageEdit().execute(
-            clip=clip, prompt=self.negative_prompt, vae=vae, image=image_tensor
-        )[0]
-        pos = FluxGuidance().append(pos, self.true_cfg_scale)[0]
-        return pos, neg
-
-    def encode_latent(self, vae: comfy.sd.VAE, image_tensor: torch.Tensor) -> dict:
-        return VAEEncode().encode(vae, image_tensor)[0]
-
-    def sample(self, model, latent, positive, negative, num_steps):
-        return KSampler().sample(
-            model=model,
-            seed=self.seed,
-            steps=num_steps,
-            cfg=self.true_cfg_scale,
-            sampler_name=self.sampler.value,
-            scheduler=self.scheduler.value,
-            positive=positive,
-            negative=negative,
-            latent_image=latent,
-            denoise=self.denoise,
-        )[0]
-
-    async def process(self, context: ProcessingContext) -> ImageRef:
-        if self._model is None or self._clip is None or self._vae is None:
-            raise RuntimeError("Model components must be loaded before processing.")
-
-        with comfy_progress(context, self, self._model):
-            unet = ModelPatcher.clone(self._model)
-            clip = self._clip.clone()
-            vae = self._vae
-            unet, clip = self.apply_loras(unet, clip)
-
-            image_tensor = await self._image_to_tensor(context)
-            latent = self.encode_latent(vae, image_tensor)
-            positive_conditioning, negative_conditioning = self.get_conditioning(
-                clip, vae, image_tensor
-            )
-
-            sampled_latent = self.sample(
-                unet,
-                latent,
-                positive_conditioning,
-                negative_conditioning,
-                self.steps,
-            )
-
-            decoded_image = VAEDecodeTiled().decode(vae, sampled_latent, 512)[0]
-            return await context.image_from_tensor(decoded_image)
-
-
 __all__ = [
     "StableDiffusion",
     "StableDiffusion3",
     "StableDiffusionXL",
     "Flux",
+    "FluxFP8",
     "QwenImage",
     "QwenImageEdit",
-    "FluxFP8",
 ]
 
 
@@ -1087,7 +952,7 @@ if __name__ == "__main__":
 
     async def main():
         node = Flux(
-            model=HFTextToImage(
+            model=HFFluxCheckpoint(
                 repo_id="Comfy-Org/flux1-dev",
                 path="flux1-dev-fp8.safetensors",
             ),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ast import Tuple
 from typing import List
 
 import PIL.Image
@@ -20,6 +21,7 @@ from nodes import (
     EmptyLatentImage,
     KSampler,
     LatentUpscale,
+    LoraLoader,
     VAEDecode,
     VAEDecodeTiled,
     VAEEncode,
@@ -28,8 +30,14 @@ from nodes import (
 )
 from nodetool.ml.core.model_manager import ModelManager
 from nodetool.metadata.types import (
+    HFCLIP,
+    HFT5,
+    HFVAE,
     HFControlNet,
+    HFFluxKontextCheckpoint,
     HFImageToImage,
+    HFQwenImageEditCheckpoint,
+    HFQwenVL,
     HFTextToImage,
     HFUnet,
     ImageRef,
@@ -252,9 +260,24 @@ class FluxKontext(BaseNode):
     image, image-to-image, generative AI, flux, kontext
     """
 
-    model: HFTextToImage = Field(
-        default=HFTextToImage(),
+    model: HFFluxKontextCheckpoint = Field(
+        default=HFFluxKontextCheckpoint(
+            repo_id="Comfy-Org/flux1-kontext-dev_ComfyUI",
+            path="split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors",
+        ),
         description="The Flux UNet checkpoint to use (e.g. flux1-dev or flux1-dev-kontext).",
+    )
+    text_encoder: HFCLIP = Field(
+        default=FLUX_CLIP_L,
+        description="The Flux CLIP checkpoint to use (e.g. flux1-dev or flux1-dev-kontext).",
+    )
+    t5_model: HFT5 = Field(
+        default=FLUX_CLIP_T5XXL,
+        description="The Flux T5 checkpoint to use (e.g. flux1-dev or flux1-dev-kontext).",
+    )
+    vae: HFVAE = Field(
+        default=FLUX_VAE,
+        description="The Flux VAE checkpoint to use (e.g. flux1-dev or flux1-dev-kontext).",
     )
     input_image: ImageRef = Field(
         default=ImageRef(),
@@ -265,7 +288,15 @@ class FluxKontext(BaseNode):
         default="", description="The negative prompt to use (optional)."
     )
     steps: int = Field(default=20, ge=1, le=100)
-    guidance_scale: float = Field(default=1.0, ge=1.0, le=30.0)
+    guidance_scale: float = Field(
+        default=2.5, ge=0.0, le=30.0, description="Flux guidance strength."
+    )
+    sampler_cfg: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=30.0,
+        description="Classifier-free guidance scale passed to the sampler.",
+    )
     seed: int = Field(default=0, ge=0, le=1000000000)
     denoise: float = Field(default=1.0, ge=0.0, le=1.0)
     scheduler: Scheduler = Field(default=Scheduler.simple)
@@ -279,10 +310,10 @@ class FluxKontext(BaseNode):
         return "Flux Kontext (Img2Img)"
 
     @classmethod
-    def get_recommended_models(cls) -> list[HFUnet | HFTextToImage]:
+    def get_recommended_models(cls) -> list[HFFluxKontextCheckpoint | HFVAE | HFCLIP | HFT5]:
         # Mirror the Flux text-to-image node: recommend Flux UNets plus CLIP and VAE.
         return [
-            HFImageToImage(
+            HFFluxKontextCheckpoint(
                 repo_id="Comfy-Org/flux1-kontext-dev_ComfyUI",
                 path="split_files/diffusion_models/flux1-dev-kontext_fp8_scaled.safetensors",
             )
@@ -297,6 +328,7 @@ class FluxKontext(BaseNode):
             "negative_prompt",
             "steps",
             "guidance_scale",
+            "sampler_cfg",
             "seed",
             "denoise",
             "scheduler",
@@ -307,6 +339,9 @@ class FluxKontext(BaseNode):
         return ["input_image"]
 
     async def preload_model(self, context: ProcessingContext):
+        import comfy.utils
+        import comfy.sd
+
         if self.model.is_empty():
             raise ValueError("Model must be selected.")
 
@@ -319,6 +354,9 @@ class FluxKontext(BaseNode):
             FLUX_CLIP_L.repo_id, "clip", FLUX_CLIP_L.path
         )
         self._vae = ModelManager.get_model(FLUX_VAE.repo_id, "vae", FLUX_VAE.path)
+
+        if getattr(self._vae, "first_stage_model", None) is None:
+            self._vae = None
 
         if self._model and self._clip and self._vae:
             return
@@ -346,6 +384,9 @@ class FluxKontext(BaseNode):
                 )
 
         if self._clip is None or self._vae is None:
+            import comfy.utils
+            import comfy.sd
+
             assert FLUX_CLIP_L.path is not None, "CLIP model path must be set."
 
             clip_l_path = try_to_load_from_cache(FLUX_CLIP_L.repo_id, FLUX_CLIP_L.path)
@@ -435,7 +476,6 @@ class FluxKontext(BaseNode):
             if self.negative_prompt:
                 negative = CLIPTextEncode().encode(self._clip, self.negative_prompt)[0]
             else:
-                # Match the reference graph: derive negative conditioning by zeroing out the positive.
                 negative = ConditioningZeroOut().zero_out(positive)[0]
 
             # Attach the image latent as a reference latent, then apply Flux guidance.
@@ -447,7 +487,7 @@ class FluxKontext(BaseNode):
                 model=self._model,
                 seed=self.seed,
                 steps=self.steps,
-                cfg=self.guidance_scale,
+                cfg=self.sampler_cfg,
                 sampler_name=self.sampler.value,
                 scheduler=self.scheduler.value,
                 positive=positive,
@@ -617,6 +657,299 @@ class ControlNet(StableDiffusionImageToImage):
                 )
 
             decoded_image = VAEDecode().decode(vae, sampled_latent)[0]
+            return await context.image_from_tensor(decoded_image)
+
+
+
+class QwenImageEdit(BaseNode):
+    """
+    Performs image editing using Qwen-Image-Edit with reference image conditioning.
+    image, image-editing, generative AI, qwen
+    """
+
+    model: HFQwenImageEditCheckpoint = Field(
+        default=HFQwenImageEditCheckpoint(
+            repo_id="Comfy-Org/Qwen-Image-Edit_ComfyUI",
+            path="split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors",
+        ),
+        description="The Qwen-Image-Edit UNet checkpoint.",
+    )
+    text_encoder: HFQwenVL = Field(
+        default=HFQwenVL(
+            repo_id="Comfy-Org/Qwen-Image_ComfyUI",
+            path="split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+        ),
+        description="The Qwen-Image-Edit CLIP/text encoder checkpoint.",
+    )
+    vae_model: HFVAE = Field(
+        default=HFVAE(
+            repo_id="Comfy-Org/Qwen-Image_ComfyUI",
+            path="split_files/vae/qwen_image_vae.safetensors",
+        ),
+        description="The Qwen-Image-Edit VAE checkpoint.",
+    )
+    input_image: ImageRef = Field(
+        default=ImageRef(), description="The reference image to edit."
+    )
+    prompt: str = Field(default="", description="Editing prompt.")
+    negative_prompt: str = Field(default="", description="Negative prompt.")
+    true_cfg_scale: float = Field(default=1.0, ge=0.0, le=10.0)
+    steps: int = Field(default=20, ge=1, le=100)
+    sampler: Sampler = Field(default=Sampler.euler)
+    scheduler: Scheduler = Field(default=Scheduler.simple)
+    seed: int = Field(default=0, ge=0, le=1000000000)
+    denoise: float = Field(default=1.0, ge=0.0, le=1.0)
+    loras: List[LoRAConfig] = Field(
+        default=[], description="List of LoRA models to apply."
+    )
+
+    _model: ModelPatcher | None = None
+    _clip: comfy.sd.CLIP | None = None
+    _vae: comfy.sd.VAE | None = None
+
+    @classmethod
+    def get_title(cls) -> str:
+        return "Qwen-Image-Edit"
+
+    @classmethod
+    def get_recommended_models(cls) -> list[HFQwenImageEditCheckpoint | HFQwenVL | HFVAE]:
+        return [
+            HFQwenImageEditCheckpoint(
+                repo_id="Comfy-Org/Qwen-Image-Edit_ComfyUI",
+                path="split_files/diffusion_models/qwen_image_edit_fp8_e4m3fn.safetensors",
+            ),
+            HFQwenVL(
+                repo_id="Comfy-Org/Qwen-Image_ComfyUI",
+                path="split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+            ),
+            HFVAE(
+                repo_id="Comfy-Org/Qwen-Image_ComfyUI",
+                path="split_files/vae/qwen_image_vae.safetensors",
+            ),
+        ]
+
+    @classmethod
+    def get_basic_fields(cls) -> list[str]:
+        return [
+            "model",
+            "text_encoder",
+            "vae_model",
+            "input_image",
+            "prompt",
+            "negative_prompt",
+            "steps",
+            "true_cfg_scale",
+            "sampler",
+            "scheduler",
+            "seed",
+        ]
+
+    def required_inputs(self) -> list[str]:
+        return ["input_image"]
+
+    def apply_loras(
+        self,
+        unet: ModelPatcher,
+        clip: comfy.sd.CLIP,
+    ) -> tuple[ModelPatcher, comfy.sd.CLIP]:
+        for lora_config in self.loras:
+            unet, clip = LoraLoader().load_lora(
+                unet,
+                clip,
+                lora_config.lora.name,
+                lora_config.strength,
+                lora_config.strength,
+            )  # type: ignore[assignment]
+        return unet, clip
+
+    def _cached_or_local(self, repo_id: str, paths: tuple[str, ...], folder: str):
+        for candidate in paths:
+            cp = try_to_load_from_cache(repo_id, candidate)
+            if cp:
+                return cp
+        for candidate in paths:
+            lp = folder_paths.get_full_path(folder, candidate)
+            if lp:
+                return lp
+        return None
+
+    def _load_clip(self) -> comfy.sd.CLIP:
+        assert self.text_encoder.path is not None, "CLIP path must be set."
+        clip_path = self._cached_or_local(
+            self.text_encoder.repo_id,
+            (
+                self.text_encoder.path,
+                "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+                "text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+                "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+            ),
+            "text_encoders",
+        )
+        if clip_path is None:
+            raise ValueError("CLIP checkpoint not found.")
+        return comfy.sd.load_clip(
+            ckpt_paths=[clip_path],
+            embedding_directory=folder_paths.get_folder_paths("embeddings"),
+            clip_type=comfy.sd.CLIPType.QWEN_IMAGE,
+        )
+
+    def _load_vae(self) -> comfy.sd.VAE:
+        assert self.vae_model.path is not None, "VAE path must be set."
+        import comfy.utils
+        import comfy.sd
+
+        vae_path = self._cached_or_local(
+            self.vae_model.repo_id,
+            (
+                self.vae_model.path,
+                "split_files/vae/qwen_image_vae.safetensors",
+                "vae/qwen_image_vae.safetensors",
+                "qwen_image_vae.safetensors",
+            ),
+            "vae",
+        )
+        if vae_path is None:
+            raise ValueError("VAE checkpoint not found.")
+        sd = comfy.utils.load_torch_file(vae_path)
+        return comfy.sd.VAE(sd=sd)
+
+    async def preload_model(self, context: ProcessingContext):
+        if self.model.is_empty():
+            raise ValueError("UNet model must be selected.")
+        if self.text_encoder.is_empty():
+            raise ValueError("CLIP model must be selected.")
+        if self.vae_model.is_empty():
+            raise ValueError("VAE model must be selected.")
+
+        assert self.model.path is not None, "UNet path must be set."
+        assert self.text_encoder.path is not None, "CLIP path must be set."
+        assert self.vae_model.path is not None, "VAE path must be set."
+
+        self._model = ModelManager.get_model(
+            self.model.repo_id, "unet", self.model.path
+        )
+        self._clip = ModelManager.get_model(
+            self.text_encoder.repo_id, "clip", self.text_encoder.path
+        )
+        self._vae = ModelManager.get_model(
+            self.vae_model.repo_id, "vae", self.vae_model.path
+        )
+
+        if self._model and self._clip and self._vae:
+            return
+
+        cache_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
+        if cache_path is None:
+            raise ValueError(
+                f"Model checkpoint not found for {self.model.repo_id}/{self.model.path}"
+            )
+
+        if self.model.path.lower().endswith(".gguf"):
+            self._model = _load_flux_gguf_unet(cache_path)
+        else:
+            self._model, self._clip, self._vae, _ = comfy.sd.load_checkpoint_guess_config(
+                cache_path,
+                output_vae=True,
+                output_clip=True,
+                embedding_directory=folder_paths.get_folder_paths("embeddings"),
+            )
+
+        if self._clip is None:
+            self._clip = self._load_clip()
+
+        # Qwen checkpoints do not bundle a VAE; load the external checkpoint
+        # if the auto-detected VAE is missing its weights.
+        if self._vae is None or getattr(self._vae, "first_stage_model", None) is None:
+            self._vae = self._load_vae()
+
+        assert self._model is not None, "UNet must be loaded."
+        assert self._clip is not None, "CLIP must be loaded."
+        assert self._vae is not None, "VAE must be loaded."
+
+        ModelManager.set_model(
+            self.id,
+            self.model.repo_id,
+            "unet",
+            self._model,
+            self.model.path,
+        )
+        ModelManager.set_model(
+            self.id,
+            self.text_encoder.repo_id,
+            "clip",
+            self._clip,
+            self.text_encoder.path,
+        )
+        ModelManager.set_model(
+            self.id,
+            self.vae_model.repo_id,
+            "vae",
+            self._vae,
+            self.vae_model.path,
+        )
+
+    async def _image_to_tensor(self, context: ProcessingContext) -> torch.Tensor:
+        if self.input_image.is_empty():
+            raise ValueError("input_image must be provided.")
+        pil_image = await context.image_to_pil(self.input_image)
+        image = np.array(pil_image.convert("RGB")).astype(np.float32) / 255.0
+        return torch.from_numpy(image)[None, ...]
+
+    def get_conditioning(
+        self, clip: comfy.sd.CLIP, vae: comfy.sd.VAE, image_tensor: torch.Tensor
+    ) -> tuple[list, list]:
+        from comfy_extras.nodes_qwen import TextEncodeQwenImageEdit
+        pos = TextEncodeQwenImageEdit().execute(
+            clip=clip, prompt=self.prompt, vae=vae, image=image_tensor
+        )[0]
+        neg = TextEncodeQwenImageEdit().execute(
+            clip=clip, prompt=self.negative_prompt, vae=vae, image=image_tensor
+        )[0]
+        pos = FluxGuidance().append(pos, self.true_cfg_scale)[0]
+        return pos, neg
+
+    def encode_latent(self, vae: comfy.sd.VAE, image_tensor: torch.Tensor) -> dict:
+        return VAEEncode().encode(vae, image_tensor)[0]
+
+    def sample(self, model, latent, positive, negative, num_steps):
+        return KSampler().sample(
+            model=model,
+            seed=self.seed,
+            steps=num_steps,
+            cfg=self.true_cfg_scale,
+            sampler_name=self.sampler.value,
+            scheduler=self.scheduler.value,
+            positive=positive,
+            negative=negative,
+            latent_image=latent,
+            denoise=self.denoise,
+        )[0]
+
+    async def process(self, context: ProcessingContext) -> ImageRef:
+        if self._model is None or self._clip is None or self._vae is None:
+            raise RuntimeError("Model components must be loaded before processing.")
+
+        with comfy_progress(context, self, self._model):
+            unet = ModelPatcher.clone(self._model)
+            clip = self._clip.clone()
+            vae = self._vae
+            unet, clip = self.apply_loras(unet, clip)
+
+            image_tensor = await self._image_to_tensor(context)
+            latent = self.encode_latent(vae, image_tensor)
+            positive_conditioning, negative_conditioning = self.get_conditioning(
+                clip, vae, image_tensor
+            )
+
+            sampled_latent = self.sample(
+                unet,
+                latent,
+                positive_conditioning,
+                negative_conditioning,
+                self.steps,
+            )
+
+            decoded_image = VAEDecodeTiled().decode(vae, sampled_latent, 512)[0]
             return await context.image_from_tensor(decoded_image)
 
 

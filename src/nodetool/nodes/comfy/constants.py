@@ -10,6 +10,7 @@ logic rather than asset declarations.
 
 from nodetool.metadata.types import (
     HFCLIP,
+    HFT5,
     HFVAE,
     HFControlNet,
     HFTextToImage,
@@ -31,12 +32,19 @@ HF_STABLE_DIFFUSION_XL_MODELS: list[HFTextToImage] = _HF_STABLE_DIFFUSION_XL_MOD
 HF_CONTROLNET_MODELS: list[HFControlNet] = _HF_CONTROLNET_MODELS
 HF_CONTROLNET_XL_MODELS: list[HFControlNet] = _HF_CONTROLNET_XL_MODELS
 
-
-FLUX_DEV_MODELS: list[HFTextToImage] = [
+FLUX_FP8_MODELS: list[HFTextToImage] = [
     HFTextToImage(
         repo_id="Comfy-Org/flux1-dev",
         path="flux1-dev-fp8.safetensors",
     ),
+    HFTextToImage(
+        repo_id="Comfy-Org/flux1-schnell",
+        path="flux1-schnell-fp8.safetensors",
+    ),
+]
+
+
+FLUX_DEV_MODELS: list[HFTextToImage] = [
     HFTextToImage(
         repo_id="Comfy-Org/flux1-dev",
         path="flux1-dev.safetensors",
@@ -47,10 +55,6 @@ FLUX_SCHNELL_MODELS: list[HFTextToImage] = [
     HFTextToImage(
         repo_id="Comfy-Org/flux1-schnell",
         path="flux1-schnell.safetensors",
-    ),
-    HFTextToImage(
-        repo_id="Comfy-Org/flux1-schnell",
-        path="flux1-schnell-fp8.safetensors",
     ),
 ]
 
@@ -64,7 +68,7 @@ FLUX_CLIP_L = HFCLIP(
     path="text_encoders/clip_l.safetensors",
 )
 
-FLUX_CLIP_T5XXL = HFCLIP(
+FLUX_CLIP_T5XXL = HFT5(
     repo_id="Comfy-Org/stable-diffusion-3.5-fp8",
     path="text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors",
 )
