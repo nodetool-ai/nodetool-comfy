@@ -15,7 +15,7 @@ from comfy.model_patcher import ModelPatcher
 from comfy_extras.nodes_flux import FluxGuidance, FluxKontextImageScale
 from comfy_extras.nodes_sd3 import EmptySD3LatentImage
 from comfy_extras.nodes_edit_model import ReferenceLatent
-from huggingface_hub import try_to_load_from_cache
+from nodetool.integrations.huggingface.huggingface_models import HF_FAST_CACHE
 from nodes import (
     CLIPTextEncode,
     ControlNetApply,
@@ -370,7 +370,7 @@ class FluxKontext(BaseNode):
         print(
             f"Trying to load model from cache: {self.model.repo_id}/{self.model.path}"
         )
-        cache_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
+        cache_path = await HF_FAST_CACHE.resolve(self.model.repo_id, self.model.path)
 
         logger.info(f"Cache path: {cache_path}")
 
@@ -390,14 +390,14 @@ class FluxKontext(BaseNode):
 
             assert FLUX_CLIP_L.path is not None, "CLIP model path must be set."
 
-            clip_l_path = try_to_load_from_cache(FLUX_CLIP_L.repo_id, FLUX_CLIP_L.path)
+            clip_l_path = await HF_FAST_CACHE.resolve(FLUX_CLIP_L.repo_id, FLUX_CLIP_L.path)
             assert (
                 clip_l_path is not None
             ), "CLIP model checkpoint not found. Download from Recommended Models."
 
             assert FLUX_CLIP_T5XXL.path is not None, "CLIP model path must be set."
 
-            clip_t5xxl_path = try_to_load_from_cache(
+            clip_t5xxl_path = await HF_FAST_CACHE.resolve(
                 FLUX_CLIP_T5XXL.repo_id, FLUX_CLIP_T5XXL.path
             )
             assert (
@@ -406,7 +406,7 @@ class FluxKontext(BaseNode):
 
             assert FLUX_VAE.path is not None, "VAE model path must be set."
 
-            vae_path = try_to_load_from_cache(FLUX_VAE.repo_id, FLUX_VAE.path)
+            vae_path = await HF_FAST_CACHE.resolve(FLUX_VAE.repo_id, FLUX_VAE.path)
             assert (
                 vae_path is not None
             ), "VAE model checkpoint not found. Download from Recommended Models."
@@ -561,7 +561,7 @@ class ControlNet(StableDiffusionImageToImage):
         if self._controlnet_model:
             return
 
-        controlnet_path = try_to_load_from_cache(
+        controlnet_path = await HF_FAST_CACHE.resolve(
             self.controlnet.repo_id, self.controlnet.path
         )
 
@@ -773,9 +773,9 @@ class QwenImageEdit(BaseNode):
             )  # type: ignore[assignment]
         return unet, clip
 
-    def _cached_or_local(self, repo_id: str, paths: tuple[str, ...], folder: str):
+    async def _cached_or_local(self, repo_id: str, paths: tuple[str, ...], folder: str):
         for candidate in paths:
-            cp = try_to_load_from_cache(repo_id, candidate)
+            cp = await HF_FAST_CACHE.resolve(repo_id, candidate)
             if cp:
                 return cp
         for candidate in paths:
@@ -784,9 +784,9 @@ class QwenImageEdit(BaseNode):
                 return lp
         return None
 
-    def _load_clip(self) -> comfy.sd.CLIP:
+    async def _load_clip(self) -> comfy.sd.CLIP:
         assert self.text_encoder.path is not None, "CLIP path must be set."
-        clip_path = self._cached_or_local(
+        clip_path = await self._cached_or_local(
             self.text_encoder.repo_id,
             (
                 self.text_encoder.path,
@@ -804,12 +804,12 @@ class QwenImageEdit(BaseNode):
             clip_type=comfy.sd.CLIPType.QWEN_IMAGE,
         )
 
-    def _load_vae(self) -> comfy.sd.VAE:
+    async def _load_vae(self) -> comfy.sd.VAE:
         assert self.vae_model.path is not None, "VAE path must be set."
         import comfy.utils
         import comfy.sd
 
-        vae_path = self._cached_or_local(
+        vae_path = await self._cached_or_local(
             self.vae_model.repo_id,
             (
                 self.vae_model.path,
@@ -849,7 +849,7 @@ class QwenImageEdit(BaseNode):
         if self._model and self._clip and self._vae:
             return
 
-        cache_path = try_to_load_from_cache(self.model.repo_id, self.model.path)
+        cache_path = await HF_FAST_CACHE.resolve(self.model.repo_id, self.model.path)
         if cache_path is None:
             raise ValueError(
                 f"Model checkpoint not found for {self.model.repo_id}/{self.model.path}"
@@ -863,12 +863,12 @@ class QwenImageEdit(BaseNode):
         )
 
         if self._clip is None:
-            self._clip = self._load_clip()
+            self._clip = await self._load_clip()
 
         # Qwen checkpoints do not bundle a VAE; load the external checkpoint
         # if the auto-detected VAE is missing its weights.
         if self._vae is None or getattr(self._vae, "first_stage_model", None) is None:
-            self._vae = self._load_vae()
+            self._vae = await self._load_vae()
 
         assert self._model is not None, "UNet must be loaded."
         assert self._clip is not None, "CLIP must be loaded."
