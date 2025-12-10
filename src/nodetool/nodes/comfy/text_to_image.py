@@ -51,7 +51,7 @@ from nodetool.nodes.comfy.constants import (
     HF_STABLE_DIFFUSION_XL_MODELS,
 )
 from nodetool.nodes.comfy.enums import Sampler, Scheduler
-from nodetool.nodes.comfy.utils import comfy_progress
+from nodetool.nodes.comfy.utils import comfy_progress, model_cache_key
 from nodetool.workflows.base_node import BaseNode
 from nodetool.workflows.processing_context import ProcessingContext
 from pydantic import Field
@@ -149,10 +149,14 @@ class StableDiffusion(BaseNode):
         assert self.model.path is not None, "Model path must be set."
 
         self._model = ModelManager.get_model(
-            self.model.repo_id, "unet", self.model.path
+            model_cache_key(self.model.repo_id, "unet", self.model.path)
         )
-        self._clip = ModelManager.get_model(self.model.repo_id, "clip", self.model.path)
-        self._vae = ModelManager.get_model(self.model.repo_id, "vae", self.model.path)
+        self._clip = ModelManager.get_model(
+            model_cache_key(self.model.repo_id, "clip", self.model.path)
+        )
+        self._vae = ModelManager.get_model(
+            model_cache_key(self.model.repo_id, "vae", self.model.path)
+        )
 
         if self._model and self._clip and self._vae:
             return
@@ -176,24 +180,18 @@ class StableDiffusion(BaseNode):
 
         ModelManager.set_model(
             self.id,
-            self.model.repo_id,
-            "unet",
+            model_cache_key(self.model.repo_id, "unet", self.model.path),
             self._model,
-            self.model.path,
         )
         ModelManager.set_model(
             self.id,
-            self.model.repo_id,
-            "clip",
+            model_cache_key(self.model.repo_id, "clip", self.model.path),
             self._clip,
-            self.model.path,
         )
         ModelManager.set_model(
             self.id,
-            self.model.repo_id,
-            "vae",
+            model_cache_key(self.model.repo_id, "vae", self.model.path),
             self._vae,
-            self.model.path,
         )
 
     async def process(self, context: ProcessingContext) -> ImageRef:
@@ -385,13 +383,13 @@ class Flux(BaseNode):
         assert self.vae_model.path is not None, "VAE path must be set."
 
         self._model = ModelManager.get_model(
-            self.model.repo_id, "unet", self.model.path
+            model_cache_key(self.model.repo_id, "unet", self.model.path)
         )
         self._clip = ModelManager.get_model(
-            self.text_encoder.repo_id, "clip", self.text_encoder.path
+            model_cache_key(self.text_encoder.repo_id, "clip", self.text_encoder.path)
         )
         self._vae = ModelManager.get_model(
-            self.vae_model.repo_id, "vae", self.vae_model.path
+            model_cache_key(self.vae_model.repo_id, "vae", self.vae_model.path)
         )
 
         # Older cached VAE instances may just be placeholders without weights.
@@ -447,26 +445,22 @@ class Flux(BaseNode):
         if self._model:
             ModelManager.set_model(
                 self.id,
-                self.model.repo_id,
-                "unet",
+                model_cache_key(self.model.repo_id, "unet", self.model.path),
                 self._model,
-                self.model.path,
             )
         if self._clip:
             ModelManager.set_model(
                 self.id,
-                self.text_encoder.repo_id,
-                "clip",
+                model_cache_key(
+                    self.text_encoder.repo_id, "clip", self.text_encoder.path
+                ),
                 self._clip,
-                self.text_encoder.path,
             )
         if self._vae:
             ModelManager.set_model(
                 self.id,
-                self.vae_model.repo_id,
-                "vae",
+                model_cache_key(self.vae_model.repo_id, "vae", self.vae_model.path),
                 self._vae,
-                self.vae_model.path,
             )
 
     async def process(self, context: ProcessingContext) -> ImageRef:
@@ -580,9 +574,15 @@ class FluxFP8(BaseNode):
             raise ValueError("Model must be selected.")
         assert self.model.path is not None, "Model path must be set."
 
-        self._model = ModelManager.get_model(self.model.repo_id, "unet", self.model.path)
-        self._clip = ModelManager.get_model(self.model.repo_id, "clip", self.model.path)
-        self._vae = ModelManager.get_model(self.model.repo_id, "vae", self.model.path)
+        self._model = ModelManager.get_model(
+            model_cache_key(self.model.repo_id, "unet", self.model.path)
+        )
+        self._clip = ModelManager.get_model(
+            model_cache_key(self.model.repo_id, "clip", self.model.path)
+        )
+        self._vae = ModelManager.get_model(
+            model_cache_key(self.model.repo_id, "vae", self.model.path)
+        )
 
         if self._model and self._clip and self._vae:
             return
@@ -603,9 +603,21 @@ class FluxFP8(BaseNode):
         if self._model is None or self._clip is None or self._vae is None:
             raise RuntimeError("Failed to load Flux fp8 checkpoint (UNet/CLIP/VAE).")
 
-        ModelManager.set_model(self.id, self.model.repo_id, "unet", self._model, self.model.path)
-        ModelManager.set_model(self.id, self.model.repo_id, "clip", self._clip, self.model.path)
-        ModelManager.set_model(self.id, self.model.repo_id, "vae", self._vae, self.model.path)
+        ModelManager.set_model(
+            self.id,
+            model_cache_key(self.model.repo_id, "unet", self.model.path),
+            self._model,
+        )
+        ModelManager.set_model(
+            self.id,
+            model_cache_key(self.model.repo_id, "clip", self.model.path),
+            self._clip,
+        )
+        ModelManager.set_model(
+            self.id,
+            model_cache_key(self.model.repo_id, "vae", self.model.path),
+            self._vae,
+        )
 
     async def process(self, context: ProcessingContext) -> ImageRef:
         if self._model is None or self._clip is None or self._vae is None:
@@ -827,13 +839,13 @@ class QwenImage(BaseNode):
         assert self.vae_model.path is not None, "VAE path must be set."
 
         self._model = ModelManager.get_model(
-            self.model.repo_id, "unet", self.model.path
+            model_cache_key(self.model.repo_id, "unet", self.model.path)
         )
         self._clip = ModelManager.get_model(
-            self.text_encoder.repo_id, "clip", self.text_encoder.path
+            model_cache_key(self.text_encoder.repo_id, "clip", self.text_encoder.path)
         )
         self._vae = ModelManager.get_model(
-            self.vae_model.repo_id, "vae", self.vae_model.path
+            model_cache_key(self.vae_model.repo_id, "vae", self.vae_model.path)
         )
 
         if getattr(self._vae, "first_stage_model", None) is None:
@@ -870,24 +882,20 @@ class QwenImage(BaseNode):
 
         ModelManager.set_model(
             self.id,
-            self.model.repo_id,
-            "unet",
+            model_cache_key(self.model.repo_id, "unet", self.model.path),
             self._model,
-            self.model.path,
         )
         ModelManager.set_model(
             self.id,
-            self.text_encoder.repo_id,
-            "clip",
+            model_cache_key(
+                self.text_encoder.repo_id, "clip", self.text_encoder.path
+            ),
             self._clip,
-            self.text_encoder.path,
         )
         ModelManager.set_model(
             self.id,
-            self.vae_model.repo_id,
-            "vae",
+            model_cache_key(self.vae_model.repo_id, "vae", self.vae_model.path),
             self._vae,
-            self.vae_model.path,
         )
 
     async def process(self, context: ProcessingContext) -> ImageRef:

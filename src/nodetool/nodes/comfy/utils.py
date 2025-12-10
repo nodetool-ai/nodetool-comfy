@@ -26,6 +26,12 @@ except ImportError:
 logger = get_logger(__name__)
 
 
+def model_cache_key(model_id: str, task: str, path: str | None) -> str:
+    """Build the cache key expected by ModelManager for a comfy sub-model."""
+    path_part = "None" if path is None else str(path)
+    return f"{model_id}_{task}_{path_part}"
+
+
 def unload_comfy_model(model) -> None:
     """
     Unload a ComfyUI model, preferring `unload_model_clones` when available.

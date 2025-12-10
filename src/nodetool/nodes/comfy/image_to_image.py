@@ -57,7 +57,7 @@ from nodetool.nodes.comfy.constants import (
     FLUX_VAE,
 )
 from nodetool.nodes.comfy.enums import Sampler, Scheduler
-from nodetool.nodes.comfy.utils import comfy_progress
+from nodetool.nodes.comfy.utils import comfy_progress, model_cache_key
 from nodetool.nodes.comfy.text_to_image import (
     StableDiffusion as TextToImageSD,
 )
@@ -354,12 +354,14 @@ class FluxKontext(BaseNode):
         assert self.model.path is not None, "Model path must be set."
 
         self._model = ModelManager.get_model(
-            self.model.repo_id, "unet", self.model.path
+            model_cache_key(self.model.repo_id, "unet", self.model.path)
         )
         self._clip = ModelManager.get_model(
-            FLUX_CLIP_L.repo_id, "clip", FLUX_CLIP_L.path
+            model_cache_key(FLUX_CLIP_L.repo_id, "clip", FLUX_CLIP_L.path)
         )
-        self._vae = ModelManager.get_model(FLUX_VAE.repo_id, "vae", FLUX_VAE.path)
+        self._vae = ModelManager.get_model(
+            model_cache_key(FLUX_VAE.repo_id, "vae", FLUX_VAE.path)
+        )
 
         if getattr(self._vae, "first_stage_model", None) is None:
             self._vae = None
@@ -432,24 +434,18 @@ class FluxKontext(BaseNode):
 
         ModelManager.set_model(
             self.id,
-            self.model.repo_id,
-            "unet",
+            model_cache_key(self.model.repo_id, "unet", self.model.path),
             self._model,
-            self.model.path,
         )
         ModelManager.set_model(
             self.id,
-            FLUX_CLIP_L.repo_id,
-            "clip",
+            model_cache_key(FLUX_CLIP_L.repo_id, "clip", FLUX_CLIP_L.path),
             self._clip,
-            FLUX_CLIP_L.path,
         )
         ModelManager.set_model(
             self.id,
-            FLUX_VAE.repo_id,
-            "vae",
+            model_cache_key(FLUX_VAE.repo_id, "vae", FLUX_VAE.path),
             self._vae,
-            FLUX_VAE.path,
         )
 
     async def process(self, context: ProcessingContext) -> ImageRef:
@@ -555,7 +551,7 @@ class ControlNet(StableDiffusionImageToImage):
         assert self.controlnet.path is not None, "ControlNet path must be set."
 
         self._controlnet_model = ModelManager.get_model(
-            self.controlnet.repo_id, "controlnet", self.controlnet.path
+            model_cache_key(self.controlnet.repo_id, "controlnet", self.controlnet.path)
         )
 
         if self._controlnet_model:
@@ -574,10 +570,10 @@ class ControlNet(StableDiffusionImageToImage):
 
         ModelManager.set_model(
             self.id,
-            self.controlnet.repo_id,
-            "controlnet",
+            model_cache_key(
+                self.controlnet.repo_id, "controlnet", self.controlnet.path
+            ),
             self._controlnet_model,
-            self.controlnet.path,
         )
 
     async def apply_controlnet(
@@ -837,13 +833,13 @@ class QwenImageEdit(BaseNode):
         assert self.vae_model.path is not None, "VAE path must be set."
 
         self._model = ModelManager.get_model(
-            self.model.repo_id, "unet", self.model.path
+            model_cache_key(self.model.repo_id, "unet", self.model.path)
         )
         self._clip = ModelManager.get_model(
-            self.text_encoder.repo_id, "clip", self.text_encoder.path
+            model_cache_key(self.text_encoder.repo_id, "clip", self.text_encoder.path)
         )
         self._vae = ModelManager.get_model(
-            self.vae_model.repo_id, "vae", self.vae_model.path
+            model_cache_key(self.vae_model.repo_id, "vae", self.vae_model.path)
         )
 
         if self._model and self._clip and self._vae:
@@ -876,24 +872,20 @@ class QwenImageEdit(BaseNode):
 
         ModelManager.set_model(
             self.id,
-            self.model.repo_id,
-            "unet",
+            model_cache_key(self.model.repo_id, "unet", self.model.path),
             self._model,
-            self.model.path,
         )
         ModelManager.set_model(
             self.id,
-            self.text_encoder.repo_id,
-            "clip",
+            model_cache_key(
+                self.text_encoder.repo_id, "clip", self.text_encoder.path
+            ),
             self._clip,
-            self.text_encoder.path,
         )
         ModelManager.set_model(
             self.id,
-            self.vae_model.repo_id,
-            "vae",
+            model_cache_key(self.vae_model.repo_id, "vae", self.vae_model.path),
             self._vae,
-            self.vae_model.path,
         )
 
     async def _image_to_tensor(self, context: ProcessingContext) -> torch.Tensor:
