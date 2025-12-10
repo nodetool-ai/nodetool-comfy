@@ -12,7 +12,7 @@ requires-python = ">=3.10.13"
 
 dependencies = [
   "nodetool-core==0.6.2-rc.6",
-  "torch==2.8.0",
+  "torch==2.9.0",
   "torchsde",
   "torchvision",
   "torchaudio",
