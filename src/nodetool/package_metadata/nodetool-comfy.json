@@ -310,6 +310,100 @@
         "width",
         "height",
         "steps"
+      ],
+      "model_packs": [
+        {
+          "id": "flux_dev_fp8",
+          "title": "Flux Dev FP8 (All-in-One)",
+          "description": "Single FP8 checkpoint with bundled CLIP/VAE. Good balance of quality and size (~17GB). Best for most users.",
+          "tags": [
+            "flux",
+            "text-to-image",
+            "fp8",
+            "compact",
+            "recommended"
+          ],
+          "models": [
+            {
+              "id": "Comfy-Org/flux1-dev:flux1-dev-fp8.safetensors",
+              "type": "hf.flux_fp8_checkpoint",
+              "name": "Flux Dev FP8",
+              "repo_id": "Comfy-Org/flux1-dev",
+              "path": "flux1-dev-fp8.safetensors",
+              "size_on_disk": 17246524772
+            }
+          ],
+          "total_size": 17246524772
+        },
+        {
+          "id": "flux_schnell_fp8",
+          "title": "Flux Schnell FP8 (Fast)",
+          "description": "Fast 4-step generation with FP8 quantization. Great for quick iterations (~17GB).",
+          "tags": [
+            "flux",
+            "text-to-image",
+            "fp8",
+            "fast",
+            "4-step"
+          ],
+          "models": [
+            {
+              "id": "Comfy-Org/flux1-schnell:flux1-schnell-fp8.safetensors",
+              "type": "hf.flux_fp8_checkpoint",
+              "name": "Flux Schnell FP8",
+              "repo_id": "Comfy-Org/flux1-schnell",
+              "path": "flux1-schnell-fp8.safetensors",
+              "size_on_disk": 17236328572
+            }
+          ],
+          "total_size": 17236328572
+        },
+        {
+          "id": "flux_dev_full",
+          "title": "Flux Dev (Full Precision)",
+          "description": "Complete Flux Dev with separate CLIP-L, T5-XXL, and VAE models. Best quality, requires ~30GB total.",
+          "tags": [
+            "flux",
+            "text-to-image",
+            "full-precision",
+            "high-quality"
+          ],
+          "models": [
+            {
+              "id": "Comfy-Org/flux1-dev:flux1-dev.safetensors",
+              "type": "hf.flux_checkpoint",
+              "name": "Flux Dev (UNet)",
+              "repo_id": "Comfy-Org/flux1-dev",
+              "path": "flux1-dev.safetensors",
+              "size_on_disk": 23802932552
+            },
+            {
+              "id": "Comfy-Org/stable-diffusion-3.5-fp8:text_encoders/clip_l.safetensors",
+              "type": "hf.clip",
+              "name": "CLIP-L Text Encoder",
+              "repo_id": "Comfy-Org/stable-diffusion-3.5-fp8",
+              "path": "text_encoders/clip_l.safetensors",
+              "size_on_disk": 246144152
+            },
+            {
+              "id": "Comfy-Org/stable-diffusion-3.5-fp8:text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors",
+              "type": "hf.t5",
+              "name": "T5-XXL Text Encoder (FP8)",
+              "repo_id": "Comfy-Org/stable-diffusion-3.5-fp8",
+              "path": "text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors",
+              "size_on_disk": 5157348688
+            },
+            {
+              "id": "ffxvs/vae-flux:ae.safetensors",
+              "type": "hf.vae",
+              "name": "Flux VAE",
+              "repo_id": "ffxvs/vae-flux",
+              "path": "ae.safetensors",
+              "size_on_disk": 335304388
+            }
+          ],
+          "total_size": 29541729780
+        }
       ]
     },
     {

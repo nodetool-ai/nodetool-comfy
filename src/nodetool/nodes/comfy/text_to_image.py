@@ -356,6 +356,92 @@ class Flux(BaseNode):
         )
 
     @classmethod
+    def get_model_packs(cls):
+        """Return curated Flux model packs for easy one-click download."""
+        from nodetool.types.model import ModelPack, UnifiedModel
+
+        return [
+            ModelPack(
+                id="flux_dev_fp8",
+                title="Flux Dev FP8 (All-in-One)",
+                description="Single FP8 checkpoint with bundled CLIP/VAE. Good balance of quality and size (~17GB). Best for most users.",
+                category="image_generation",
+                tags=["flux", "text-to-image", "fp8", "compact", "recommended"],
+                models=[
+                    UnifiedModel(
+                        id="Comfy-Org/flux1-dev:flux1-dev-fp8.safetensors",
+                        type="hf.flux_fp8_checkpoint",
+                        name="Flux Dev FP8",
+                        repo_id="Comfy-Org/flux1-dev",
+                        path="flux1-dev-fp8.safetensors",
+                        size_on_disk=17246524772,
+                    )
+                ],
+                total_size=17246524772,
+            ),
+            ModelPack(
+                id="flux_schnell_fp8",
+                title="Flux Schnell FP8 (Fast)",
+                description="Fast 4-step generation with FP8 quantization. Great for quick iterations (~17GB).",
+                category="image_generation",
+                tags=["flux", "text-to-image", "fp8", "fast", "4-step"],
+                models=[
+                    UnifiedModel(
+                        id="Comfy-Org/flux1-schnell:flux1-schnell-fp8.safetensors",
+                        type="hf.flux_fp8_checkpoint",
+                        name="Flux Schnell FP8",
+                        repo_id="Comfy-Org/flux1-schnell",
+                        path="flux1-schnell-fp8.safetensors",
+                        size_on_disk=17236328572,
+                    )
+                ],
+                total_size=17236328572,
+            ),
+            ModelPack(
+                id="flux_dev_full",
+                title="Flux Dev (Full Precision)",
+                description="Complete Flux Dev with separate CLIP-L, T5-XXL, and VAE models. Best quality, requires ~30GB total.",
+                category="image_generation",
+                tags=["flux", "text-to-image", "full-precision", "high-quality"],
+                models=[
+                    UnifiedModel(
+                        id="Comfy-Org/flux1-dev:flux1-dev.safetensors",
+                        type="hf.flux_checkpoint",
+                        name="Flux Dev (UNet)",
+                        repo_id="Comfy-Org/flux1-dev",
+                        path="flux1-dev.safetensors",
+                        size_on_disk=23802932552,
+                    ),
+                    UnifiedModel(
+                        id=f"{FLUX_CLIP_L.repo_id}:{FLUX_CLIP_L.path}",
+                        type="hf.clip",
+                        name="CLIP-L Text Encoder",
+                        repo_id=FLUX_CLIP_L.repo_id,
+                        path=FLUX_CLIP_L.path,
+                        size_on_disk=246144152,
+                    ),
+                    UnifiedModel(
+                        id=f"{FLUX_CLIP_T5XXL.repo_id}:{FLUX_CLIP_T5XXL.path}",
+                        type="hf.t5",
+                        name="T5-XXL Text Encoder (FP8)",
+                        repo_id=FLUX_CLIP_T5XXL.repo_id,
+                        path=FLUX_CLIP_T5XXL.path,
+                        size_on_disk=5157348688,
+                    ),
+                    UnifiedModel(
+                        id=f"{FLUX_VAE.repo_id}:{FLUX_VAE.path}",
+                        type="hf.vae",
+                        name="Flux VAE",
+                        repo_id=FLUX_VAE.repo_id,
+                        path=FLUX_VAE.path,
+                        size_on_disk=335304388,
+                    ),
+                ],
+                total_size=29541729780,
+            ),
+        ]
+
+    @classmethod
     def get_basic_fields(cls) -> list[str]:
         return [
             "model",
