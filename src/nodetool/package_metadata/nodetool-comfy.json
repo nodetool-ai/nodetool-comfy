@@ -1,7 +1,7 @@
 {
   "name": "nodetool-comfy",
   "description": "ComfyUI nodes for Nodetool",
-  "version": "0.6.2-rc.11",
+  "version": "0.6.2-rc.12",
   "authors": [
     "Matthias Georgi <matti.georgi@gmail.com>"
   ],
@@ -1099,13 +1099,12 @@
             "en",
             "doi:10.57967/hf/0453",
             "license:other",
-            "autotrain_compatible",
             "diffusers:StableDiffusionPipeline",
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 334662,
-          "likes": 992
+          "downloads": 86342,
+          "likes": 996
         }
       ],
       "basic_fields": [
@@ -1505,15 +1504,14 @@
             "arxiv:2108.01073",
             "arxiv:2112.10752",
             "license:openrail++",
-            "autotrain_compatible",
             "endpoints_compatible",
             "diffusers:StableDiffusionXLPipeline",
             "deploy:azure",
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 2726044,
-          "likes": 7140
+          "downloads": 2122049,
+          "likes": 7232
         },
         {
           "id": "Lykon/dreamshaper-xl-v2-turbo:DreamShaperXL_Turbo_v2_1.safetensors",
@@ -1539,14 +1537,13 @@
             "lcm",
             "en",
             "license:openrail++",
-            "autotrain_compatible",
             "endpoints_compatible",
             "diffusers:StableDiffusionXLPipeline",
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 58175,
-          "likes": 69
+          "downloads": 62403,
+          "likes": 70
         },
         {
           "id": "RunDiffusion/Juggernaut-XL-v9:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
@@ -2036,8 +2033,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 14306,
-          "likes": 52
+          "downloads": 13691,
+          "likes": 55
         },
         {
           "id": "lllyasviel/control_v11p_sd15_inpaint:diffusion_pytorch_model.fp16.safetensors",
@@ -4087,13 +4084,12 @@
             "en",
             "doi:10.57967/hf/0453",
             "license:other",
-            "autotrain_compatible",
             "diffusers:StableDiffusionPipeline",
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 334662,
-          "likes": 992
+          "downloads": 86342,
+          "likes": 996
         }
       ],
       "basic_fields": [
@@ -4347,15 +4343,14 @@
             "arxiv:2108.01073",
             "arxiv:2112.10752",
             "license:openrail++",
-            "autotrain_compatible",
             "endpoints_compatible",
             "diffusers:StableDiffusionXLPipeline",
             "deploy:azure",
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 2726044,
-          "likes": 7140
+          "downloads": 2122049,
+          "likes": 7232
         },
         {
           "id": "Lykon/dreamshaper-xl-v2-turbo:DreamShaperXL_Turbo_v2_1.safetensors",
@@ -4381,14 +4376,13 @@
             "lcm",
             "en",
             "license:openrail++",
-            "autotrain_compatible",
             "endpoints_compatible",
             "diffusers:StableDiffusionXLPipeline",
             "region:us"
           ],
           "has_model_index": true,
-          "downloads": 58175,
-          "likes": 69
+          "downloads": 62403,
+          "likes": 70
         },
         {
           "id": "RunDiffusion/Juggernaut-XL-v9:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
