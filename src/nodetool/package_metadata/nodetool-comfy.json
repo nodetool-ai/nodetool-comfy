@@ -1,7 +1,7 @@
 {
   "name": "nodetool-comfy",
   "description": "ComfyUI nodes for Nodetool",
-  "version": "0.6.2-rc.12",
+  "version": "0.6.2-rc.13",
   "authors": [
     "Matthias Georgi <matti.georgi@gmail.com>"
   ],
@@ -245,8 +245,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 91462,
-          "likes": 196
+          "downloads": 140020,
+          "likes": 203
         },
         {
           "id": "Comfy-Org/stable-diffusion-3.5-fp8:text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors",
@@ -262,8 +262,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 91462,
-          "likes": 196
+          "downloads": 140020,
+          "likes": 203
         },
         {
           "id": "Comfy-Org/flux1-dev:flux1-dev.safetensors",
@@ -296,8 +296,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 227894,
-          "likes": 241
+          "downloads": 255684,
+          "likes": 244
         }
       ],
       "basic_fields": [
@@ -623,8 +623,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 227894,
-          "likes": 241
+          "downloads": 255684,
+          "likes": 244
         }
       ],
       "basic_fields": [
@@ -861,8 +861,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 1956766,
-          "likes": 252
+          "downloads": 1614214,
+          "likes": 280
         },
         {
           "id": "Comfy-Org/Qwen-Image_ComfyUI:split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
@@ -878,8 +878,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 1956766,
-          "likes": 252
+          "downloads": 1614214,
+          "likes": 280
         },
         {
           "id": "Comfy-Org/Qwen-Image_ComfyUI:split_files/vae/qwen_image_vae.safetensors",
@@ -895,8 +895,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 1956766,
-          "likes": 252
+          "downloads": 1614214,
+          "likes": 280
         }
       ],
       "basic_fields": [
@@ -1301,8 +1301,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 91462,
-          "likes": 196
+          "downloads": 140020,
+          "likes": 203
         }
       ],
       "basic_fields": [
@@ -3298,8 +3298,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 91462,
-          "likes": 196
+          "downloads": 140020,
+          "likes": 203
         },
         {
           "id": "Comfy-Org/stable-diffusion-3.5-fp8:text_encoders/t5xxl_fp8_e4m3fn_scaled.safetensors",
@@ -3315,8 +3315,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 91462,
-          "likes": 196
+          "downloads": 140020,
+          "likes": 203
         }
       ],
       "basic_fields": [
@@ -3566,8 +3566,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 1956766,
-          "likes": 252
+          "downloads": 1614214,
+          "likes": 280
         },
         {
           "id": "Comfy-Org/Qwen-Image_ComfyUI:split_files/vae/qwen_image_vae.safetensors",
@@ -3583,8 +3583,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 1956766,
-          "likes": 252
+          "downloads": 1614214,
+          "likes": 280
         }
       ],
       "basic_fields": [
@@ -3829,8 +3829,8 @@
             "region:us"
           ],
           "has_model_index": false,
-          "downloads": 91462,
-          "likes": 196
+          "downloads": 140020,
+          "likes": 203
         }
       ],
       "basic_fields": [
