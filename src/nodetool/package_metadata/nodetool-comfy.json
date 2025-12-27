@@ -1,7 +1,7 @@
 {
   "name": "nodetool-comfy",
   "description": "ComfyUI nodes for Nodetool",
-  "version": "0.6.2-rc.14",
+  "version": "0.6.2-rc.15",
   "authors": [
     "Matthias Georgi <matti.georgi@gmail.com>"
   ],
@@ -1920,7 +1920,8 @@
             "type": "image",
             "uri": "",
             "asset_id": null,
-            "data": null
+            "data": null,
+            "metadata": null
           },
           "title": "Input Image",
           "description": "Input image for img2img"
@@ -1934,7 +1935,8 @@
             "type": "image",
             "uri": "",
             "asset_id": null,
-            "data": null
+            "data": null,
+            "metadata": null
           },
           "title": "Mask Image",
           "description": "Mask image for img2img (optional)"
@@ -1984,7 +1986,8 @@
             "type": "image",
             "uri": "",
             "asset_id": null,
-            "data": null
+            "data": null,
+            "metadata": null
           },
           "title": "Image",
           "description": "Canny edge detection image for ControlNet"
@@ -3117,7 +3120,8 @@
             "type": "image",
             "uri": "",
             "asset_id": null,
-            "data": null
+            "data": null,
+            "metadata": null
           },
           "title": "Input Image",
           "description": "Reference image for Flux Kontext img2img."
@@ -3396,7 +3400,8 @@
             "type": "image",
             "uri": "",
             "asset_id": null,
-            "data": null
+            "data": null,
+            "metadata": null
           },
           "title": "Input Image",
           "description": "The reference image to edit."
@@ -3766,7 +3771,8 @@
             "type": "image",
             "uri": "",
             "asset_id": null,
-            "data": null
+            "data": null,
+            "metadata": null
           },
           "title": "Input Image",
           "description": "Input image for img2img"
@@ -3780,7 +3786,8 @@
             "type": "image",
             "uri": "",
             "asset_id": null,
-            "data": null
+            "data": null,
+            "metadata": null
           },
           "title": "Mask Image",
           "description": "Mask image for img2img (optional)"
@@ -4016,7 +4023,8 @@
             "type": "image",
             "uri": "",
             "asset_id": null,
-            "data": null
+            "data": null,
+            "metadata": null
           },
           "title": "Input Image",
           "description": "Input image for img2img"
@@ -4030,7 +4038,8 @@
             "type": "image",
             "uri": "",
             "asset_id": null,
-            "data": null
+            "data": null,
+            "metadata": null
           },
           "title": "Mask Image",
           "description": "Mask image for img2img (optional)"
@@ -4275,7 +4284,8 @@
             "type": "image",
             "uri": "",
             "asset_id": null,
-            "data": null
+            "data": null,
+            "metadata": null
           },
           "title": "Input Image",
           "description": "Input image for img2img"
@@ -4289,7 +4299,8 @@
             "type": "image",
             "uri": "",
             "asset_id": null,
-            "data": null
+            "data": null,
+            "metadata": null
           },
           "title": "Mask Image",
           "description": "Mask image for img2img (optional)"
