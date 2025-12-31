@@ -18,10 +18,11 @@ The generator:
 
 import argparse
 import json
+import keyword
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from type_mappings import (
     get_nodetool_type,
@@ -121,7 +122,7 @@ class ProxyNodeGenerator:
         param_name: str,
         param_info: Dict[str, Any],
         is_required: bool
-    ) -> tuple[str, str, Set[str]]:
+    ) -> Tuple[str, str, Set[str]]:
         """
         Generate a Pydantic field definition.
         
@@ -320,7 +321,7 @@ class ProxyNodeGenerator:
         function_name = node_info.get("function") or "process"
         
         # Sanitize function name (can't be None or a Python keyword)
-        if not function_name or function_name == "None":
+        if not function_name or function_name == "None" or keyword.iskeyword(function_name):
             function_name = "process"
         
         method_lines = []
@@ -333,12 +334,13 @@ class ProxyNodeGenerator:
         
         # Convert inputs
         for safe_name, orig_name, param_type in input_params:
+            # Skip if parameter is None
+            method_lines.append(f'        if self.{safe_name} is not None:')
+            
             conversion = get_type_conversion_code(f"self.{safe_name}", param_type, "to_comfy")
             if conversion:
-                method_lines.append(f'        if self.{safe_name} is not None:')
                 method_lines.append(f'            inputs["{orig_name}"] = {conversion}')
             else:
-                method_lines.append(f'        if self.{safe_name} is not None:')
                 method_lines.append(f'            inputs["{orig_name}"] = self.{safe_name}')
         
         method_lines.append(f'')
