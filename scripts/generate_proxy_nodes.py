@@ -127,7 +127,7 @@ class ProxyNodeGenerator:
         
         Args:
             param_name: Parameter name
-            param_info: Parameter info from metadata
+            param_info: Parameter info from metadata (dict or string)
             is_required: Whether the parameter is required
             
         Returns:
@@ -135,13 +135,18 @@ class ProxyNodeGenerator:
         """
         types_used = set()
         
-        # Get type info
-        param_type = param_info.get("type", "Any")
-        config = param_info.get("config", {})
+        # Handle case where param_info is just a string (type name)
+        if isinstance(param_info, str):
+            param_type = param_info
+            config = {}
+        else:
+            # Get type info
+            param_type = param_info.get("type", "Any")
+            config = param_info.get("config", {})
         
         # Handle COMBO type (list of options)
-        if param_type == "COMBO" or param_info.get("options"):
-            options = param_info.get("options", [])
+        if param_type == "COMBO" or (isinstance(param_info, dict) and param_info.get("options")):
+            options = param_info.get("options", []) if isinstance(param_info, dict) else []
             if options and isinstance(options, list):
                 # Create an enum-like Field with choices
                 field_type = "str"
@@ -198,7 +203,7 @@ class ProxyNodeGenerator:
         """
         node_id = node_info.get("node_id")
         class_name = node_info.get("class_name")
-        category = node_info.get("category", "uncategorized")
+        category = node_info.get("category") or "uncategorized"
         description = node_info.get("description", "")
         node_style = node_info.get("node_style", "v1")
         
@@ -228,6 +233,10 @@ class ProxyNodeGenerator:
             required_inputs = input_types.get("required", {})
             optional_inputs = input_types.get("optional", {})
             
+            # Skip nodes with no inputs (might be incomplete metadata)
+            if not required_inputs and not optional_inputs:
+                return None
+            
             # Required parameters
             for param_name, param_info in required_inputs.items():
                 field_type, field_def, field_types = self._generate_field_definition(
@@ -236,7 +245,9 @@ class ProxyNodeGenerator:
                 types_used.update(field_types)
                 safe_param_name = self._sanitize_name(param_name)
                 field_defs.append(f"    {safe_param_name}: {field_type} = {field_def}")
-                input_params.append((safe_param_name, param_name, param_info.get("type", "Any")))
+                # Handle both dict and string param_info
+                param_type = param_info.get("type", "Any") if isinstance(param_info, dict) else param_info
+                input_params.append((safe_param_name, param_name, param_type))
             
             # Optional parameters
             for param_name, param_info in optional_inputs.items():
@@ -246,7 +257,9 @@ class ProxyNodeGenerator:
                 types_used.update(field_types)
                 safe_param_name = self._sanitize_name(param_name)
                 field_defs.append(f"    {safe_param_name}: {field_type} = {field_def}")
-                input_params.append((safe_param_name, param_name, param_info.get("type", "Any")))
+                # Handle both dict and string param_info
+                param_type = param_info.get("type", "Any") if isinstance(param_info, dict) else param_info
+                input_params.append((safe_param_name, param_name, param_type))
         
         # Generate return type
         return_types = node_info.get("return_types", [])
@@ -411,7 +424,8 @@ class ProxyNodeGenerator:
         # Add __all__ export
         class_names = []
         for node in nodes:
-            if node.get("deprecated", False) or "_for_testing" in node.get("category", ""):
+            category = node.get("category") or ""
+            if node.get("deprecated", False) or "_for_testing" in category:
                 continue
             class_name = self._generate_class_name(
                 node.get("node_id"), node.get("class_name")
