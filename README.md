@@ -51,6 +51,30 @@ python scripts/parse_comfy_nodes.py
 
 This generates `comfy_nodes_metadata.json` with information about all available ComfyUI nodes (both V1/classic style and V3/schema style).
 
+### Generating Proxy Nodes
+
+To generate Nodetool proxy nodes from ComfyUI metadata:
+
+```bash
+# Generate all nodes
+python scripts/generate_proxy_nodes.py
+
+# Generate specific categories only
+python scripts/generate_proxy_nodes.py --categories sampling loaders image
+
+# Custom output directory
+python scripts/generate_proxy_nodes.py --output-dir src/nodetool/nodes/comfy_generated
+```
+
+The generator creates proxy nodes that:
+- Extend Nodetool's `BaseNode`
+- Have proper Pydantic field definitions with constraints
+- Handle type conversions between Nodetool types (ImageRef, AudioRef) and ComfyUI types (torch.Tensor)
+- Call underlying ComfyUI nodes
+- Return properly converted results
+
+See [scripts/README.md](scripts/README.md) for detailed documentation.
+
 ### Updating ComfyUI
 
 To update the ComfyUI submodule to the latest version:
@@ -63,11 +87,12 @@ git add ComfyUI
 git commit -m "Update ComfyUI submodule"
 ```
 
-Then sync the source:
+Then sync the source and regenerate:
 
 ```bash
 python scripts/sync_comfyui.py
 python scripts/parse_comfy_nodes.py
+python scripts/generate_proxy_nodes.py
 ```
 
 ## Requirements
