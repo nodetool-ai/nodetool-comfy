@@ -317,7 +317,11 @@ class ProxyNodeGenerator:
         """Generate the process method for a proxy node."""
         node_id = node_info.get("node_id")
         class_name = node_info.get("class_name")
-        function_name = node_info.get("function", "process")
+        function_name = node_info.get("function") or "process"
+        
+        # Sanitize function name (can't be None or a Python keyword)
+        if not function_name or function_name == "None":
+            function_name = "process"
         
         method_lines = []
         method_lines.append(f'    async def process(self, context: ProcessingContext) -> {get_nodetool_type(return_types[0]) if return_types else "Any"}:')
