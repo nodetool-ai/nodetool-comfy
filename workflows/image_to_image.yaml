@@ -1,0 +1,71 @@
+# Image-to-Image Workflow
+# This demonstrates how to define a workflow with image inputs
+
+name: "Image to Image"
+description: "Transform an existing image based on a text prompt."
+category: "comfy.workflows.img2img"
+class_name: "ImageToImage"
+
+inputs:
+  input_image:
+    node: "10"
+    field: "image"
+    type: ImageRef
+    description: "The input image to transform"
+  
+  prompt:
+    node: "6"
+    field: "text"
+    type: str
+    default: "A beautiful painting"
+    description: "The positive prompt for transformation"
+  
+  negative_prompt:
+    node: "7"
+    field: "text"
+    type: str
+    default: "blurry, low quality"
+    description: "The negative prompt (things to avoid)"
+  
+  seed:
+    node: "3"
+    field: "seed"
+    type: int
+    default: 0
+    min: 0
+    max: 18446744073709551615
+    description: "Random seed for generation"
+  
+  steps:
+    node: "3"
+    field: "steps"
+    type: int
+    default: 20
+    min: 1
+    max: 100
+    description: "Number of sampling steps"
+  
+  cfg_scale:
+    node: "3"
+    field: "cfg"
+    type: float
+    default: 7.0
+    min: 1.0
+    max: 30.0
+    description: "Classifier-free guidance scale"
+  
+  denoise:
+    node: "3"
+    field: "denoise"
+    type: float
+    default: 0.75
+    min: 0.0
+    max: 1.0
+    description: "Denoising strength (lower = more similar to input)"
+
+outputs:
+  image:
+    node: "9"
+    type: ImageRef
+    output_index: 0
+    description: "Transformed image"

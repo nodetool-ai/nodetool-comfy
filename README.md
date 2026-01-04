@@ -51,6 +51,66 @@ python scripts/parse_comfy_nodes.py
 
 This generates `comfy_nodes_metadata.json` with information about all available ComfyUI nodes (both V1/classic style and V3/schema style).
 
+### Importing ComfyUI Workflows as Nodetool Nodes
+
+You can import ComfyUI workflows and convert them to Nodetool nodes:
+
+```bash
+python scripts/import_workflows.py [workflow_dir] [-o output_dir]
+```
+
+**How it works:**
+1. Each ComfyUI workflow is defined using a YAML configuration file
+2. The YAML file references a corresponding ComfyUI workflow API JSON file
+3. The script generates Python modules with node classes for each workflow
+4. Generated nodes inherit from `ComfyWorkflowNode` base class
+5. The nodes handle conversion between Nodetool types (ImageRef, etc.) and ComfyUI types
+
+**Workflow YAML Format:**
+
+```yaml
+name: "My Workflow"
+description: "Generate images with SDXL"
+category: "comfy.workflows"
+
+inputs:
+  prompt:
+    node: "6"           # Node ID in workflow JSON
+    field: "text"       # Field name in the node's inputs
+    type: str
+    default: ""
+    description: "The prompt for generation"
+  
+  image:
+    node: "10"
+    field: "image"
+    type: ImageRef      # Nodetool type
+    description: "Input image"
+
+outputs:
+  image:
+    node: "9"           # SaveImage node ID
+    type: ImageRef
+    description: "Generated image"
+```
+
+**Supported Types:**
+- `str`, `int`, `float`, `bool` - Basic Python types
+- `ImageRef` - Image assets (converted to/from ComfyUI image format)
+- `AudioRef` - Audio assets
+- `VideoRef` - Video assets
+
+**Example:**
+
+Place workflow files in the `workflows/` directory:
+- `workflows/my_workflow.yaml` - Configuration
+- `workflows/my_workflow.json` - ComfyUI workflow API JSON
+
+Then run:
+```bash
+python scripts/import_workflows.py workflows -o src/nodetool/nodes/comfy/
+```
+
 ### Updating ComfyUI
 
 To update the ComfyUI submodule to the latest version:
