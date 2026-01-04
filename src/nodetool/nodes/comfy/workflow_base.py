@@ -265,10 +265,17 @@ class ComfyWorkflowNode(BaseNode):
                     from_node_id, from_output_idx = input_value
                     from_result = cache.get(from_node_id)
                     if from_result is not None:
-                        if isinstance(from_result, tuple):
+                        # Handle both tuple results (multiple outputs) and single values
+                        if isinstance(from_result, (tuple, list)) and len(from_result) > from_output_idx:
                             node_inputs[input_name] = from_result[from_output_idx]
-                        else:
+                        elif from_output_idx == 0:
+                            # Single output - use directly if requesting index 0
                             node_inputs[input_name] = from_result
+                        else:
+                            raise RuntimeError(
+                                f"Node {from_node_id} output index {from_output_idx} "
+                                f"requested but result is not indexable or out of range"
+                            )
                 else:
                     node_inputs[input_name] = input_value
             
@@ -317,7 +324,22 @@ class ComfyWorkflowNode(BaseNode):
                 outputs.append(None)
                 continue
             
-            output_value = result[output_idx] if isinstance(result, tuple) else result
+            # Safely extract the output value at the specified index
+            if isinstance(result, (tuple, list)):
+                if output_idx < len(result):
+                    output_value = result[output_idx]
+                else:
+                    raise RuntimeError(
+                        f"Output index {output_idx} out of range for node {node_id} "
+                        f"which has {len(result)} outputs"
+                    )
+            elif output_idx == 0:
+                output_value = result
+            else:
+                raise RuntimeError(
+                    f"Output index {output_idx} requested but node {node_id} "
+                    f"has only a single output"
+                )
             
             # Convert based on output type
             output_ref = await self._convert_output_value(output_value, context)
@@ -344,15 +366,16 @@ class ComfyWorkflowNode(BaseNode):
             images = output_value["images"]
             if images:
                 # Load the first image
-                output_dir = folder_paths.get_output_directory()
+                output_dir = Path(folder_paths.get_output_directory())
                 image_info = images[0]
                 subfolder = image_info.get("subfolder", "")
                 filename = image_info["filename"]
                 
+                # Use pathlib for consistent path handling
                 if subfolder:
-                    image_path = os.path.join(output_dir, subfolder, filename)
+                    image_path = output_dir / subfolder / filename
                 else:
-                    image_path = os.path.join(output_dir, filename)
+                    image_path = output_dir / filename
                 
                 pil_image = PIL.Image.open(image_path)
                 return await context.image_from_pil(pil_image)
