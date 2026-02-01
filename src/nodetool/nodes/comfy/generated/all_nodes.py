@@ -414,7 +414,7 @@ class SaveImage(BaseNode):
     """
 
     images: Any = Field(default=None, description="The images to save.")
-    filename_prefix: str = Field(default="ComfyUI", description="The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values from nodes.")
+    filename_prefix: str = Field(default='ComfyUI', description="The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values from nodes.")
 
     async def process(self, context: ProcessingContext) -> Any:
         """Process the SaveImage node."""
@@ -1609,7 +1609,7 @@ class GLIGENTextBoxApply(BaseNode):
     conditioning_to: Any = Field(default=None, description="conditioning_to parameter")
     clip: Any = Field(default=None, description="clip parameter")
     gligen_textbox_model: Any = Field(default=None, description="gligen_textbox_model parameter")
-    text: str = Field(default="", description="text parameter")
+    text: str = Field(default='', description="text parameter")
     width: int = Field(default=64, description="width parameter", ge=8, le={'_ref': 'MAX_RESOLUTION'})
     height: int = Field(default=64, description="height parameter", ge=8, le={'_ref': 'MAX_RESOLUTION'})
     x: int = Field(default=0, description="x parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
@@ -1725,7 +1725,7 @@ class SaveLatent(BaseNode):
     """SaveLatent node from ComfyUI (category: _for_testing)"""
 
     samples: Any = Field(default=None, description="samples parameter")
-    filename_prefix: str = Field(default="latents/ComfyUI", description="filename_prefix parameter")
+    filename_prefix: str = Field(default='latents/ComfyUI', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
         """Process the SaveLatent node."""
@@ -6746,7 +6746,7 @@ class CheckpointSave(BaseNode):
     model: Any = Field(default=None, description="model parameter")
     clip: Any = Field(default=None, description="clip parameter")
     vae: Any = Field(default=None, description="vae parameter")
-    filename_prefix: str = Field(default="checkpoints/ComfyUI", description="filename_prefix parameter")
+    filename_prefix: str = Field(default='checkpoints/ComfyUI', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
         """Process the CheckpointSave node."""
@@ -6856,7 +6856,7 @@ class CLIPSave(BaseNode):
     """CLIPSave node from ComfyUI (category: advanced/model_merging)"""
 
     clip: Any = Field(default=None, description="clip parameter")
-    filename_prefix: str = Field(default="clip/ComfyUI", description="filename_prefix parameter")
+    filename_prefix: str = Field(default='clip/ComfyUI', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
         """Process the CLIPSave node."""
@@ -6882,7 +6882,7 @@ class VAESave(BaseNode):
     """VAESave node from ComfyUI (category: advanced/model_merging)"""
 
     vae: Any = Field(default=None, description="vae parameter")
-    filename_prefix: str = Field(default="vae/ComfyUI_vae", description="filename_prefix parameter")
+    filename_prefix: str = Field(default='vae/ComfyUI_vae', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
         """Process the VAESave node."""
@@ -6908,7 +6908,7 @@ class ModelSave(BaseNode):
     """ModelSave node from ComfyUI (category: advanced/model_merging)"""
 
     model: Any = Field(default=None, description="model parameter")
-    filename_prefix: str = Field(default="diffusion_models/ComfyUI", description="filename_prefix parameter")
+    filename_prefix: str = Field(default='diffusion_models/ComfyUI', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
         """Process the ModelSave node."""
@@ -9207,7 +9207,7 @@ class ImageOnlyCheckpointSave(BaseNode):
     model: Any = Field(default=None, description="model parameter")
     clip_vision: Any = Field(default=None, description="clip_vision parameter")
     vae: Any = Field(default=None, description="vae parameter")
-    filename_prefix: str = Field(default="checkpoints/ComfyUI", description="filename_prefix parameter")
+    filename_prefix: str = Field(default='checkpoints/ComfyUI', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
         """Process the ImageOnlyCheckpointSave node."""

@@ -14,6 +14,10 @@ import json
 from pathlib import Path
 
 
+# Configuration constants
+NODE_COUNT_THRESHOLD = 0.9  # Minimum ratio of expected to actual nodes
+
+
 def validate_syntax(file_path: Path) -> bool:
     """Validate Python syntax of generated file."""
     print(f"Validating syntax of {file_path}...")
@@ -49,7 +53,7 @@ def validate_structure(file_path: Path, expected_nodes: int) -> bool:
         print("  ✗ No classes found!")
         return False
     
-    if num_classes < expected_nodes * 0.9:  # Allow some margin
+    if num_classes < expected_nodes * NODE_COUNT_THRESHOLD:
         print(f"  ⚠ Expected around {expected_nodes} nodes, found {num_classes}")
     else:
         print(f"  ✓ Class count looks good")

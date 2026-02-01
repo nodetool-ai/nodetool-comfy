@@ -12,6 +12,7 @@ It creates:
 """
 
 import json
+import keyword
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -89,8 +90,8 @@ def sanitize_field_name(name: str) -> str:
     if name and name[0].isdigit():
         name = f"field_{name}"
     
-    # Avoid Python keywords
-    if name in ["class", "def", "return", "if", "else", "for", "while", "import", "from"]:
+    # Avoid Python keywords using the keyword module
+    if keyword.iskeyword(name):
         name = f"{name}_"
     
     return name.lower()
@@ -110,7 +111,8 @@ def get_default_value(comfy_type: str, config: Optional[Dict]) -> Any:
     if config and "default" in config:
         default = config["default"]
         if comfy_type == "STRING":
-            return f'"{default}"'
+            # Use repr() for proper string escaping
+            return repr(default)
         return default
     
     # Default values for basic types
@@ -119,7 +121,7 @@ def get_default_value(comfy_type: str, config: Optional[Dict]) -> Any:
     elif comfy_type == "FLOAT":
         return 0.0
     elif comfy_type == "STRING":
-        return '""'
+        return repr("")
     elif comfy_type == "BOOLEAN":
         return "False"
     

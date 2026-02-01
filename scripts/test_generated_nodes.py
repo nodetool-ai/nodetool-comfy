@@ -15,9 +15,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Add src to path
-repo_root = Path(__file__).parent.parent
-sys.path.insert(0, str(repo_root / "src"))
+
+# Configuration constants
+SAMPLE_NODE_COUNT = 5  # Number of sample nodes to test in detail
 
 
 def test_import():
@@ -51,7 +51,7 @@ def test_node_structure(all_nodes):
         return False
     
     # Test a few sample nodes
-    sample_nodes = node_classes[:5]
+    sample_nodes = node_classes[:SAMPLE_NODE_COUNT]
     
     for name, node_class in sample_nodes:
         print(f"\nTesting {name}...")
@@ -193,6 +193,10 @@ def test_node_graph_structure():
 
 def main():
     """Main test runner."""
+    # Add src to path
+    repo_root = Path(__file__).parent.parent
+    sys.path.insert(0, str(repo_root / "src"))
+    
     print("=" * 60)
     print("Testing Generated ComfyUI Nodes")
     print("=" * 60)
