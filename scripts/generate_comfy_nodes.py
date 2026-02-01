@@ -178,9 +178,19 @@ def generate_process_method(node_info: Dict) -> List[str]:
     lines = []
     node_id = node_info.get("node_id") or "Unknown"
     class_name = node_info.get("class_name") or node_id
-    function_name = node_info.get("function", "process")
+    function_name = node_info.get("function") or "process"
     node_style = node_info.get("node_style", "v1")
     return_types = node_info.get("return_types", [])
+    
+    # If function_name is None or empty, skip implementation
+    if not function_name or function_name == "None":
+        lines.append("    async def process(self, context: ProcessingContext) -> Any:")
+        lines.append(f'        """Process the {node_id} node."""')
+        lines.append("        # TODO: Function name not specified in metadata")
+        lines.append("        raise NotImplementedError(")
+        lines.append(f'            "Function name not available for {class_name}"')
+        lines.append("        )")
+        return lines
     
     # Determine return type annotation
     if return_types:

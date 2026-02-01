@@ -454,7 +454,7 @@ class PreviewImage(BaseNode):
         kwargs["images"] = self.images
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -6946,7 +6946,7 @@ class ModelMergeSD1(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -6968,7 +6968,7 @@ class ModelMergeSD1(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -6990,7 +6990,7 @@ class ModelMergeSDXL(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7012,7 +7012,7 @@ class ModelMergeSD3_2B(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7034,7 +7034,7 @@ class ModelMergeAuraflow(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7056,7 +7056,7 @@ class ModelMergeFlux1(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7078,7 +7078,7 @@ class ModelMergeSD35_Large(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7100,7 +7100,7 @@ class ModelMergeMochiPreview(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7122,7 +7122,7 @@ class ModelMergeLTXV(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7144,7 +7144,7 @@ class ModelMergeCosmos7B(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7166,7 +7166,7 @@ class ModelMergeCosmos14B(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7193,7 +7193,7 @@ class ModelMergeWAN2_1(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7215,7 +7215,7 @@ class ModelMergeCosmosPredict2_2B(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7237,7 +7237,7 @@ class ModelMergeCosmosPredict2_14B(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7259,7 +7259,7 @@ class ModelMergeQwenImage(BaseNode):
         kwargs = {}
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -7357,7 +7357,7 @@ class ZImageFunControlnet(BaseNode):
             kwargs["mask"] = self.mask
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
@@ -9225,7 +9225,7 @@ class ImageOnlyCheckpointSave(BaseNode):
         kwargs["filename_prefix"] = self.filename_prefix
 
         # Call the node function
-        result = node.None(**kwargs)
+        result = node.process(**kwargs)
 
         # Return result
         return result
