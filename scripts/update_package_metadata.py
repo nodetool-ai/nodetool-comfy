@@ -2,7 +2,11 @@
 """
 Update Package Metadata for Generated ComfyUI Nodes
 
-This script generates package metadata JSON from the generated ComfyUI nodes
+PREFERRED METHOD: Use `nodetool pack scan` command from nodetool-core:
+    nodetool pack scan --package nodetool-comfy
+
+This script is a fallback for when nodetool-core is not available.
+It generates package metadata JSON from the generated ComfyUI nodes
 in the format expected by nodetool for DSL code generation.
 """
 
