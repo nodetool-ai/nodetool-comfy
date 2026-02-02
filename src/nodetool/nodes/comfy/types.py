@@ -9,21 +9,21 @@ while maintaining type safety.
 from __future__ import annotations
 
 from typing import Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
 
 class ComfyUIType(BaseModel):
     """Base class for ComfyUI type wrappers."""
     
-    # Store the actual ComfyUI object
-    _value: Any = None
+    # Store the actual ComfyUI object as a private attribute
+    _value: Any = PrivateAttr(default=None)
     
     class Config:
         arbitrary_types_allowed = True
         
     def __init__(self, value: Any = None, **kwargs):
         super().__init__(**kwargs)
-        object.__setattr__(self, '_value', value)
+        self._value = value
     
     @property
     def value(self) -> Any:

@@ -316,19 +316,23 @@ def generate_process_method(node_info: Dict) -> List[str]:
             lines.append("        for i, raw_val in enumerate(raw_results):")
             
             # Build wrapping logic for each return type
+            first = True
             for idx, rt in enumerate(return_types):
                 # Normalize type (strip IO. prefix if present)
                 normalized_rt = rt[3:] if rt.startswith("IO.") else rt
                 
+                if_keyword = "if" if first else "elif"
+                first = False
+                
                 if normalized_rt in WRAPPER_TYPES:
                     wrapper_class = TYPE_MAPPINGS[normalized_rt]
-                    lines.append(f"            if i == {idx}:")
+                    lines.append(f"            {if_keyword} i == {idx}:")
                     lines.append(f"                wrapped.append({wrapper_class}(raw_val))")
                 elif normalized_rt == "IMAGE":
-                    lines.append(f"            if i == {idx}:")
+                    lines.append(f"            {if_keyword} i == {idx}:")
                     lines.append(f"                wrapped.append(await context.image_from_tensor(raw_val))")
                 else:
-                    lines.append(f"            if i == {idx}:")
+                    lines.append(f"            {if_keyword} i == {idx}:")
                     lines.append(f"                wrapped.append(raw_val)")
             
             lines.append("        return tuple(wrapped)")

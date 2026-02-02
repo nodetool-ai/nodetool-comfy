@@ -99,9 +99,9 @@ class CheckpointLoaderSimple(BaseNode):
         for i, raw_val in enumerate(raw_results):
             if i == 0:
                 wrapped.append(Model(raw_val))
-            if i == 1:
+            elif i == 1:
                 wrapped.append(Clip(raw_val))
-            if i == 2:
+            elif i == 2:
                 wrapped.append(Vae(raw_val))
         return tuple(wrapped)
 
@@ -513,7 +513,7 @@ class LoadImage(BaseNode):
         for i, raw_val in enumerate(raw_results):
             if i == 0:
                 wrapped.append(await context.image_from_tensor(raw_val))
-            if i == 1:
+            elif i == 1:
                 wrapped.append(Mask(raw_val))
         return tuple(wrapped)
 
@@ -697,7 +697,7 @@ class ImagePadForOutpaint(BaseNode):
         for i, raw_val in enumerate(raw_results):
             if i == 0:
                 wrapped.append(await context.image_from_tensor(raw_val))
-            if i == 1:
+            elif i == 1:
                 wrapped.append(Mask(raw_val))
         return tuple(wrapped)
 
@@ -1208,7 +1208,7 @@ class LoraLoader(BaseNode):
         for i, raw_val in enumerate(raw_results):
             if i == 0:
                 wrapped.append(Model(raw_val))
-            if i == 1:
+            elif i == 1:
                 wrapped.append(Clip(raw_val))
         return tuple(wrapped)
 
@@ -1463,7 +1463,7 @@ class ControlNetApplyAdvanced(BaseNode):
         for i, raw_val in enumerate(raw_results):
             if i == 0:
                 wrapped.append(Conditioning(raw_val))
-            if i == 1:
+            elif i == 1:
                 wrapped.append(Conditioning(raw_val))
         return tuple(wrapped)
 
@@ -1665,11 +1665,11 @@ class unCLIPCheckpointLoader(BaseNode):
         for i, raw_val in enumerate(raw_results):
             if i == 0:
                 wrapped.append(Model(raw_val))
-            if i == 1:
+            elif i == 1:
                 wrapped.append(Clip(raw_val))
-            if i == 2:
+            elif i == 2:
                 wrapped.append(Vae(raw_val))
-            if i == 3:
+            elif i == 3:
                 wrapped.append(raw_val)
         return tuple(wrapped)
 
@@ -1774,9 +1774,9 @@ class InpaintModelConditioning(BaseNode):
         for i, raw_val in enumerate(raw_results):
             if i == 0:
                 wrapped.append(Conditioning(raw_val))
-            if i == 1:
+            elif i == 1:
                 wrapped.append(Conditioning(raw_val))
-            if i == 2:
+            elif i == 2:
                 wrapped.append(Latent(raw_val))
         return tuple(wrapped)
 
@@ -1807,9 +1807,9 @@ class DiffusersLoader(BaseNode):
         for i, raw_val in enumerate(raw_results):
             if i == 0:
                 wrapped.append(Model(raw_val))
-            if i == 1:
+            elif i == 1:
                 wrapped.append(Clip(raw_val))
-            if i == 2:
+            elif i == 2:
                 wrapped.append(Vae(raw_val))
         return tuple(wrapped)
 
@@ -9247,9 +9247,9 @@ class ImageOnlyCheckpointLoader(BaseNode):
         for i, raw_val in enumerate(raw_results):
             if i == 0:
                 wrapped.append(Model(raw_val))
-            if i == 1:
+            elif i == 1:
                 wrapped.append(raw_val)
-            if i == 2:
+            elif i == 2:
                 wrapped.append(Vae(raw_val))
         return tuple(wrapped)
 
@@ -9296,9 +9296,9 @@ class SVD_img2vid_Conditioning(BaseNode):
         for i, raw_val in enumerate(raw_results):
             if i == 0:
                 wrapped.append(Conditioning(raw_val))
-            if i == 1:
+            elif i == 1:
                 wrapped.append(Conditioning(raw_val))
-            if i == 2:
+            elif i == 2:
                 wrapped.append(Latent(raw_val))
         return tuple(wrapped)
 
