@@ -11,6 +11,12 @@ from typing import Any, Optional
 
 from nodetool.workflows.base_node import BaseNode
 from nodetool.workflows.processing_context import ProcessingContext
+from nodetool.metadata.types import ImageRef
+from nodetool.nodes.comfy.types import (
+    Model, Clip, Vae, Conditioning, Latent, Mask,
+    ControlNet, StyleModel, Gligen, UpscaleModel,
+    Sampler, Sigmas, Noise, Guider, Audio
+)
 from pydantic import Field
 
 
@@ -22,18 +28,18 @@ class KSampler(BaseNode):
     ComfyUI Node ID: KSampler
     """
 
-    model: Any = Field(default=None, description="The model used for denoising the input latent.")
+    model: Model = Field(default=None, description="The model used for denoising the input latent.")
     seed: int = Field(default=0, description="The random seed used for creating the noise.", ge=0, le=18446744073709551615)
     steps: int = Field(default=20, description="The number of steps used in the denoising process.", ge=1, le=10000)
     cfg: float = Field(default=8.0, description="The Classifier-Free Guidance scale balances creativity and adherence to the prompt. Higher values result in images more closely matching the prompt however too high values will negatively impact quality.", ge=0.0, le=100.0)
     sampler_name: str = Field(default=None, description="The algorithm used when sampling, this can affect the quality, speed, and style of the generated output.")
     scheduler: str = Field(default=None, description="The scheduler controls how noise is gradually removed to form the image.")
-    positive: Any = Field(default=None, description="The conditioning describing the attributes you want to include in the image.")
-    negative: Any = Field(default=None, description="The conditioning describing the attributes you want to exclude from the image.")
-    latent_image: Any = Field(default=None, description="The latent image to denoise.")
+    positive: Conditioning = Field(default=None, description="The conditioning describing the attributes you want to include in the image.")
+    negative: Conditioning = Field(default=None, description="The conditioning describing the attributes you want to exclude from the image.")
+    latent_image: Latent = Field(default=None, description="The latent image to denoise.")
     denoise: float = Field(default=1.0, description="The amount of denoising applied, lower values will maintain the structure of the initial image allowing for image to image sampling.", ge=0.0, le=1.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the KSampler node."""
         # Import the ComfyUI node class
         from nodes import KSampler
@@ -41,24 +47,25 @@ class KSampler(BaseNode):
         # Create node instance
         node = KSampler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["seed"] = self.seed
         kwargs["steps"] = self.steps
         kwargs["cfg"] = self.cfg
         kwargs["sampler_name"] = self.sampler_name
         kwargs["scheduler"] = self.scheduler
-        kwargs["positive"] = self.positive
-        kwargs["negative"] = self.negative
-        kwargs["latent_image"] = self.latent_image
+        kwargs["positive"] = self.positive.value if self.positive else None
+        kwargs["negative"] = self.negative.value if self.negative else None
+        kwargs["latent_image"] = self.latent_image.value if self.latent_image else None
         kwargs["denoise"] = self.denoise
 
         # Call the node function
         result = node.sample(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class CheckpointLoaderSimple(BaseNode):
@@ -71,7 +78,7 @@ class CheckpointLoaderSimple(BaseNode):
 
     ckpt_name: Any = Field(default=None, description="The name of the checkpoint (model) to load.")
 
-    async def process(self, context: ProcessingContext) -> tuple[Any, Any, Any]:
+    async def process(self, context: ProcessingContext) -> tuple[Model, Clip, Vae]:
         """Process the CheckpointLoaderSimple node."""
         # Import the ComfyUI node class
         from nodes import CheckpointLoaderSimple
@@ -79,15 +86,24 @@ class CheckpointLoaderSimple(BaseNode):
         # Create node instance
         node = CheckpointLoaderSimple()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["ckpt_name"] = self.ckpt_name
 
         # Call the node function
         result = node.load_checkpoint(**kwargs)
 
-        # Return result
-        return result if isinstance(result, tuple) else (result,)
+        # Wrap results in appropriate types
+        raw_results = result if isinstance(result, tuple) else (result,)
+        wrapped = []
+        for i, raw_val in enumerate(raw_results):
+            if i == 0:
+                wrapped.append(Model(raw_val))
+            if i == 1:
+                wrapped.append(Clip(raw_val))
+            if i == 2:
+                wrapped.append(Vae(raw_val))
+        return tuple(wrapped)
 
 
 class CLIPTextEncode(BaseNode):
@@ -98,10 +114,10 @@ class CLIPTextEncode(BaseNode):
     ComfyUI Node ID: CLIPTextEncode
     """
 
-    text: Any = Field(default=None, description="The text to be encoded.")
-    clip: Any = Field(default=None, description="The CLIP model used for encoding the text.")
+    text: str = Field(default=None, description="The text to be encoded.")
+    clip: Clip = Field(default=None, description="The CLIP model used for encoding the text.")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the CLIPTextEncode node."""
         # Import the ComfyUI node class
         from nodes import CLIPTextEncode
@@ -109,25 +125,26 @@ class CLIPTextEncode(BaseNode):
         # Create node instance
         node = CLIPTextEncode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["text"] = self.text
-        kwargs["clip"] = self.clip
+        kwargs["clip"] = self.clip.value if self.clip else None
 
         # Call the node function
         result = node.encode(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class CLIPSetLastLayer(BaseNode):
     """CLIPSetLastLayer node from ComfyUI (category: conditioning)"""
 
-    clip: Any = Field(default=None, description="clip parameter")
+    clip: Clip = Field(default=None, description="clip parameter")
     stop_at_clip_layer: int = Field(default=0, description="stop_at_clip_layer parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Clip:
         """Process the CLIPSetLastLayer node."""
         # Import the ComfyUI node class
         from nodes import CLIPSetLastLayer
@@ -135,16 +152,17 @@ class CLIPSetLastLayer(BaseNode):
         # Create node instance
         node = CLIPSetLastLayer()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["clip"] = self.clip
+        kwargs["clip"] = self.clip.value if self.clip else None
         kwargs["stop_at_clip_layer"] = self.stop_at_clip_layer
 
         # Call the node function
         result = node.set_last_layer(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Clip(raw_result)
 
 
 class VAEDecode(BaseNode):
@@ -155,10 +173,10 @@ class VAEDecode(BaseNode):
     ComfyUI Node ID: VAEDecode
     """
 
-    samples: Any = Field(default=None, description="The latent to be decoded.")
-    vae: Any = Field(default=None, description="The VAE model used for decoding the latent.")
+    samples: Latent = Field(default=None, description="The latent to be decoded.")
+    vae: Vae = Field(default=None, description="The VAE model used for decoding the latent.")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> ImageRef:
         """Process the VAEDecode node."""
         # Import the ComfyUI node class
         from nodes import VAEDecode
@@ -166,25 +184,26 @@ class VAEDecode(BaseNode):
         # Create node instance
         node = VAEDecode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples"] = self.samples
-        kwargs["vae"] = self.vae
+        kwargs["samples"] = self.samples.value if self.samples else None
+        kwargs["vae"] = self.vae.value if self.vae else None
 
         # Call the node function
         result = node.decode(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return await context.image_from_tensor(raw_result)
 
 
 class VAEEncode(BaseNode):
     """VAEEncode node from ComfyUI (category: latent)"""
 
-    pixels: Any = Field(default=None, description="pixels parameter")
-    vae: Any = Field(default=None, description="vae parameter")
+    pixels: ImageRef = Field(default=None, description="pixels parameter")
+    vae: Vae = Field(default=None, description="vae parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the VAEEncode node."""
         # Import the ComfyUI node class
         from nodes import VAEEncode
@@ -192,27 +211,28 @@ class VAEEncode(BaseNode):
         # Create node instance
         node = VAEEncode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["pixels"] = self.pixels
-        kwargs["vae"] = self.vae
+        kwargs["pixels"] = await context.image_to_tensor(self.pixels) if self.pixels else None
+        kwargs["vae"] = self.vae.value if self.vae else None
 
         # Call the node function
         result = node.encode(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class VAEEncodeForInpaint(BaseNode):
     """VAEEncodeForInpaint node from ComfyUI (category: latent/inpaint)"""
 
-    pixels: Any = Field(default=None, description="pixels parameter")
-    vae: Any = Field(default=None, description="vae parameter")
-    mask: Any = Field(default=None, description="mask parameter")
+    pixels: ImageRef = Field(default=None, description="pixels parameter")
+    vae: Vae = Field(default=None, description="vae parameter")
+    mask: Mask = Field(default=None, description="mask parameter")
     grow_mask_by: int = Field(default=6, description="grow_mask_by parameter", ge=0, le=64)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the VAEEncodeForInpaint node."""
         # Import the ComfyUI node class
         from nodes import VAEEncodeForInpaint
@@ -220,18 +240,19 @@ class VAEEncodeForInpaint(BaseNode):
         # Create node instance
         node = VAEEncodeForInpaint()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["pixels"] = self.pixels
-        kwargs["vae"] = self.vae
-        kwargs["mask"] = self.mask
+        kwargs["pixels"] = await context.image_to_tensor(self.pixels) if self.pixels else None
+        kwargs["vae"] = self.vae.value if self.vae else None
+        kwargs["mask"] = self.mask.value if self.mask else None
         kwargs["grow_mask_by"] = self.grow_mask_by
 
         # Call the node function
         result = node.encode(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class VAELoader(BaseNode):
@@ -239,7 +260,7 @@ class VAELoader(BaseNode):
 
     vae_name: Any = Field(default=None, description="vae_name parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Vae:
         """Process the VAELoader node."""
         # Import the ComfyUI node class
         from nodes import VAELoader
@@ -247,15 +268,16 @@ class VAELoader(BaseNode):
         # Create node instance
         node = VAELoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["vae_name"] = self.vae_name
 
         # Call the node function
         result = node.load_vae(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Vae(raw_result)
 
 
 class EmptyLatentImage(BaseNode):
@@ -270,7 +292,7 @@ class EmptyLatentImage(BaseNode):
     height: int = Field(default=512, description="The height of the latent images in pixels.", ge=16, le={'_ref': 'MAX_RESOLUTION'})
     batch_size: int = Field(default=1, description="The number of latent images in the batch.", ge=1, le=4096)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the EmptyLatentImage node."""
         # Import the ComfyUI node class
         from nodes import EmptyLatentImage
@@ -278,7 +300,7 @@ class EmptyLatentImage(BaseNode):
         # Create node instance
         node = EmptyLatentImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["width"] = self.width
         kwargs["height"] = self.height
@@ -287,20 +309,21 @@ class EmptyLatentImage(BaseNode):
         # Call the node function
         result = node.generate(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class LatentUpscale(BaseNode):
     """LatentUpscale node from ComfyUI (category: latent)"""
 
-    samples: Any = Field(default=None, description="samples parameter")
+    samples: Latent = Field(default=None, description="samples parameter")
     upscale_method: Any = Field(default=None, description="upscale_method parameter")
     width: int = Field(default=512, description="width parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     height: int = Field(default=512, description="height parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     crop: Any = Field(default=None, description="crop parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the LatentUpscale node."""
         # Import the ComfyUI node class
         from nodes import LatentUpscale
@@ -308,9 +331,9 @@ class LatentUpscale(BaseNode):
         # Create node instance
         node = LatentUpscale()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples"] = self.samples
+        kwargs["samples"] = self.samples.value if self.samples else None
         kwargs["upscale_method"] = self.upscale_method
         kwargs["width"] = self.width
         kwargs["height"] = self.height
@@ -319,18 +342,19 @@ class LatentUpscale(BaseNode):
         # Call the node function
         result = node.upscale(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class LatentUpscaleBy(BaseNode):
     """LatentUpscaleBy node from ComfyUI (category: latent)"""
 
-    samples: Any = Field(default=None, description="samples parameter")
+    samples: Latent = Field(default=None, description="samples parameter")
     upscale_method: Any = Field(default=None, description="upscale_method parameter")
     scale_by: float = Field(default=1.5, description="scale_by parameter", ge=0.01, le=8.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the LatentUpscaleBy node."""
         # Import the ComfyUI node class
         from nodes import LatentUpscaleBy
@@ -338,27 +362,28 @@ class LatentUpscaleBy(BaseNode):
         # Create node instance
         node = LatentUpscaleBy()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples"] = self.samples
+        kwargs["samples"] = self.samples.value if self.samples else None
         kwargs["upscale_method"] = self.upscale_method
         kwargs["scale_by"] = self.scale_by
 
         # Call the node function
         result = node.upscale(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class LatentFromBatch(BaseNode):
     """LatentFromBatch node from ComfyUI (category: latent/batch)"""
 
-    samples: Any = Field(default=None, description="samples parameter")
+    samples: Latent = Field(default=None, description="samples parameter")
     batch_index: int = Field(default=0, description="batch_index parameter", ge=0, le=63)
     length: int = Field(default=1, description="length parameter", ge=1, le=64)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the LatentFromBatch node."""
         # Import the ComfyUI node class
         from nodes import LatentFromBatch
@@ -366,26 +391,27 @@ class LatentFromBatch(BaseNode):
         # Create node instance
         node = LatentFromBatch()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples"] = self.samples
+        kwargs["samples"] = self.samples.value if self.samples else None
         kwargs["batch_index"] = self.batch_index
         kwargs["length"] = self.length
 
         # Call the node function
         result = node.frombatch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class RepeatLatentBatch(BaseNode):
     """RepeatLatentBatch node from ComfyUI (category: latent/batch)"""
 
-    samples: Any = Field(default=None, description="samples parameter")
+    samples: Latent = Field(default=None, description="samples parameter")
     amount: int = Field(default=1, description="amount parameter", ge=1, le=64)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the RepeatLatentBatch node."""
         # Import the ComfyUI node class
         from nodes import RepeatLatentBatch
@@ -393,16 +419,17 @@ class RepeatLatentBatch(BaseNode):
         # Create node instance
         node = RepeatLatentBatch()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples"] = self.samples
+        kwargs["samples"] = self.samples.value if self.samples else None
         kwargs["amount"] = self.amount
 
         # Call the node function
         result = node.repeat(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class SaveImage(BaseNode):
@@ -413,7 +440,7 @@ class SaveImage(BaseNode):
     ComfyUI Node ID: SaveImage
     """
 
-    images: Any = Field(default=None, description="The images to save.")
+    images: ImageRef = Field(default=None, description="The images to save.")
     filename_prefix: str = Field(default='ComfyUI', description="The prefix for the file to save. This may include formatting information such as %date:yyyy-MM-dd% or %Empty Latent Image.width% to include values from nodes.")
 
     async def process(self, context: ProcessingContext) -> Any:
@@ -424,22 +451,22 @@ class SaveImage(BaseNode):
         # Create node instance
         node = SaveImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["images"] = self.images
+        kwargs["images"] = await context.image_to_tensor(self.images) if self.images else None
         kwargs["filename_prefix"] = self.filename_prefix
 
         # Call the node function
         result = node.save_images(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
 class PreviewImage(BaseNode):
     """PreviewImage node from ComfyUI (category: uncategorized)"""
 
-    images: Any = Field(default=None, description="images parameter")
+    images: ImageRef = Field(default=None, description="images parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
         """Process the PreviewImage node."""
@@ -449,14 +476,14 @@ class PreviewImage(BaseNode):
         # Create node instance
         node = PreviewImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["images"] = self.images
+        kwargs["images"] = await context.image_to_tensor(self.images) if self.images else None
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -465,7 +492,7 @@ class LoadImage(BaseNode):
 
     image: Any = Field(default=None, description="image parameter")
 
-    async def process(self, context: ProcessingContext) -> tuple[Any, Any]:
+    async def process(self, context: ProcessingContext) -> tuple[ImageRef, Mask]:
         """Process the LoadImage node."""
         # Import the ComfyUI node class
         from nodes import LoadImage
@@ -473,15 +500,22 @@ class LoadImage(BaseNode):
         # Create node instance
         node = LoadImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["image"] = self.image
 
         # Call the node function
         result = node.load_image(**kwargs)
 
-        # Return result
-        return result if isinstance(result, tuple) else (result,)
+        # Wrap results in appropriate types
+        raw_results = result if isinstance(result, tuple) else (result,)
+        wrapped = []
+        for i, raw_val in enumerate(raw_results):
+            if i == 0:
+                wrapped.append(await context.image_from_tensor(raw_val))
+            if i == 1:
+                wrapped.append(Mask(raw_val))
+        return tuple(wrapped)
 
 
 class LoadImageMask(BaseNode):
@@ -490,7 +524,7 @@ class LoadImageMask(BaseNode):
     image: Any = Field(default=None, description="image parameter")
     channel: Any = Field(default=None, description="channel parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Mask:
         """Process the LoadImageMask node."""
         # Import the ComfyUI node class
         from nodes import LoadImageMask
@@ -498,7 +532,7 @@ class LoadImageMask(BaseNode):
         # Create node instance
         node = LoadImageMask()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["image"] = self.image
         kwargs["channel"] = self.channel
@@ -506,8 +540,9 @@ class LoadImageMask(BaseNode):
         # Call the node function
         result = node.load_image(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Mask(raw_result)
 
 
 class LoadImageOutput(BaseNode):
@@ -528,27 +563,27 @@ class LoadImageOutput(BaseNode):
         # Create node instance
         node = LoadImageOutput()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["image"] = self.image
 
         # Call the node function
         result = node.load_image(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
 class ImageScale(BaseNode):
     """ImageScale node from ComfyUI (category: image/upscaling)"""
 
-    image: Any = Field(default=None, description="image parameter")
+    image: ImageRef = Field(default=None, description="image parameter")
     upscale_method: Any = Field(default=None, description="upscale_method parameter")
     width: int = Field(default=512, description="width parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     height: int = Field(default=512, description="height parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     crop: Any = Field(default=None, description="crop parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> ImageRef:
         """Process the ImageScale node."""
         # Import the ComfyUI node class
         from nodes import ImageScale
@@ -556,9 +591,9 @@ class ImageScale(BaseNode):
         # Create node instance
         node = ImageScale()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["image"] = self.image
+        kwargs["image"] = await context.image_to_tensor(self.image) if self.image else None
         kwargs["upscale_method"] = self.upscale_method
         kwargs["width"] = self.width
         kwargs["height"] = self.height
@@ -567,18 +602,19 @@ class ImageScale(BaseNode):
         # Call the node function
         result = node.upscale(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return await context.image_from_tensor(raw_result)
 
 
 class ImageScaleBy(BaseNode):
     """ImageScaleBy node from ComfyUI (category: image/upscaling)"""
 
-    image: Any = Field(default=None, description="image parameter")
+    image: ImageRef = Field(default=None, description="image parameter")
     upscale_method: Any = Field(default=None, description="upscale_method parameter")
     scale_by: float = Field(default=1.0, description="scale_by parameter", ge=0.01, le=8.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> ImageRef:
         """Process the ImageScaleBy node."""
         # Import the ComfyUI node class
         from nodes import ImageScaleBy
@@ -586,25 +622,26 @@ class ImageScaleBy(BaseNode):
         # Create node instance
         node = ImageScaleBy()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["image"] = self.image
+        kwargs["image"] = await context.image_to_tensor(self.image) if self.image else None
         kwargs["upscale_method"] = self.upscale_method
         kwargs["scale_by"] = self.scale_by
 
         # Call the node function
         result = node.upscale(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return await context.image_from_tensor(raw_result)
 
 
 class ImageInvert(BaseNode):
     """ImageInvert node from ComfyUI (category: image)"""
 
-    image: Any = Field(default=None, description="image parameter")
+    image: ImageRef = Field(default=None, description="image parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> ImageRef:
         """Process the ImageInvert node."""
         # Import the ComfyUI node class
         from nodes import ImageInvert
@@ -612,28 +649,29 @@ class ImageInvert(BaseNode):
         # Create node instance
         node = ImageInvert()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["image"] = self.image
+        kwargs["image"] = await context.image_to_tensor(self.image) if self.image else None
 
         # Call the node function
         result = node.invert(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return await context.image_from_tensor(raw_result)
 
 
 class ImagePadForOutpaint(BaseNode):
     """ImagePadForOutpaint node from ComfyUI (category: image)"""
 
-    image: Any = Field(default=None, description="image parameter")
+    image: ImageRef = Field(default=None, description="image parameter")
     left: int = Field(default=0, description="left parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     top: int = Field(default=0, description="top parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     right: int = Field(default=0, description="right parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     bottom: int = Field(default=0, description="bottom parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     feathering: int = Field(default=40, description="feathering parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
 
-    async def process(self, context: ProcessingContext) -> tuple[Any, Any]:
+    async def process(self, context: ProcessingContext) -> tuple[ImageRef, Mask]:
         """Process the ImagePadForOutpaint node."""
         # Import the ComfyUI node class
         from nodes import ImagePadForOutpaint
@@ -641,9 +679,9 @@ class ImagePadForOutpaint(BaseNode):
         # Create node instance
         node = ImagePadForOutpaint()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["image"] = self.image
+        kwargs["image"] = await context.image_to_tensor(self.image) if self.image else None
         kwargs["left"] = self.left
         kwargs["top"] = self.top
         kwargs["right"] = self.right
@@ -653,8 +691,15 @@ class ImagePadForOutpaint(BaseNode):
         # Call the node function
         result = node.expand_image(**kwargs)
 
-        # Return result
-        return result if isinstance(result, tuple) else (result,)
+        # Wrap results in appropriate types
+        raw_results = result if isinstance(result, tuple) else (result,)
+        wrapped = []
+        for i, raw_val in enumerate(raw_results):
+            if i == 0:
+                wrapped.append(await context.image_from_tensor(raw_val))
+            if i == 1:
+                wrapped.append(Mask(raw_val))
+        return tuple(wrapped)
 
 
 class EmptyImage(BaseNode):
@@ -665,7 +710,7 @@ class EmptyImage(BaseNode):
     batch_size: int = Field(default=1, description="batch_size parameter", ge=1, le=4096)
     color: int = Field(default=0, description="color parameter", ge=0, le=16777215)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> ImageRef:
         """Process the EmptyImage node."""
         # Import the ComfyUI node class
         from nodes import EmptyImage
@@ -673,7 +718,7 @@ class EmptyImage(BaseNode):
         # Create node instance
         node = EmptyImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["width"] = self.width
         kwargs["height"] = self.height
@@ -683,18 +728,19 @@ class EmptyImage(BaseNode):
         # Call the node function
         result = node.generate(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return await context.image_from_tensor(raw_result)
 
 
 class ConditioningAverage(BaseNode):
     """ConditioningAverage node from ComfyUI (category: conditioning)"""
 
-    conditioning_to: Any = Field(default=None, description="conditioning_to parameter")
-    conditioning_from: Any = Field(default=None, description="conditioning_from parameter")
+    conditioning_to: Conditioning = Field(default=None, description="conditioning_to parameter")
+    conditioning_from: Conditioning = Field(default=None, description="conditioning_from parameter")
     conditioning_to_strength: float = Field(default=1.0, description="conditioning_to_strength parameter", ge=0.0, le=1.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the ConditioningAverage node."""
         # Import the ComfyUI node class
         from nodes import ConditioningAverage
@@ -702,26 +748,27 @@ class ConditioningAverage(BaseNode):
         # Create node instance
         node = ConditioningAverage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning_to"] = self.conditioning_to
-        kwargs["conditioning_from"] = self.conditioning_from
+        kwargs["conditioning_to"] = self.conditioning_to.value if self.conditioning_to else None
+        kwargs["conditioning_from"] = self.conditioning_from.value if self.conditioning_from else None
         kwargs["conditioning_to_strength"] = self.conditioning_to_strength
 
         # Call the node function
         result = node.addWeighted(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class ConditioningCombine(BaseNode):
     """ConditioningCombine node from ComfyUI (category: conditioning)"""
 
-    conditioning_1: Any = Field(default=None, description="conditioning_1 parameter")
-    conditioning_2: Any = Field(default=None, description="conditioning_2 parameter")
+    conditioning_1: Conditioning = Field(default=None, description="conditioning_1 parameter")
+    conditioning_2: Conditioning = Field(default=None, description="conditioning_2 parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the ConditioningCombine node."""
         # Import the ComfyUI node class
         from nodes import ConditioningCombine
@@ -729,25 +776,26 @@ class ConditioningCombine(BaseNode):
         # Create node instance
         node = ConditioningCombine()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning_1"] = self.conditioning_1
-        kwargs["conditioning_2"] = self.conditioning_2
+        kwargs["conditioning_1"] = self.conditioning_1.value if self.conditioning_1 else None
+        kwargs["conditioning_2"] = self.conditioning_2.value if self.conditioning_2 else None
 
         # Call the node function
         result = node.combine(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class ConditioningConcat(BaseNode):
     """ConditioningConcat node from ComfyUI (category: conditioning)"""
 
-    conditioning_to: Any = Field(default=None, description="conditioning_to parameter")
-    conditioning_from: Any = Field(default=None, description="conditioning_from parameter")
+    conditioning_to: Conditioning = Field(default=None, description="conditioning_to parameter")
+    conditioning_from: Conditioning = Field(default=None, description="conditioning_from parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the ConditioningConcat node."""
         # Import the ComfyUI node class
         from nodes import ConditioningConcat
@@ -755,29 +803,30 @@ class ConditioningConcat(BaseNode):
         # Create node instance
         node = ConditioningConcat()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning_to"] = self.conditioning_to
-        kwargs["conditioning_from"] = self.conditioning_from
+        kwargs["conditioning_to"] = self.conditioning_to.value if self.conditioning_to else None
+        kwargs["conditioning_from"] = self.conditioning_from.value if self.conditioning_from else None
 
         # Call the node function
         result = node.concat(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class ConditioningSetArea(BaseNode):
     """ConditioningSetArea node from ComfyUI (category: conditioning)"""
 
-    conditioning: Any = Field(default=None, description="conditioning parameter")
+    conditioning: Conditioning = Field(default=None, description="conditioning parameter")
     width: int = Field(default=64, description="width parameter", ge=64, le={'_ref': 'MAX_RESOLUTION'})
     height: int = Field(default=64, description="height parameter", ge=64, le={'_ref': 'MAX_RESOLUTION'})
     x: int = Field(default=0, description="x parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     y: int = Field(default=0, description="y parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     strength: float = Field(default=1.0, description="strength parameter", ge=0.0, le=10.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the ConditioningSetArea node."""
         # Import the ComfyUI node class
         from nodes import ConditioningSetArea
@@ -785,9 +834,9 @@ class ConditioningSetArea(BaseNode):
         # Create node instance
         node = ConditioningSetArea()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning"] = self.conditioning
+        kwargs["conditioning"] = self.conditioning.value if self.conditioning else None
         kwargs["width"] = self.width
         kwargs["height"] = self.height
         kwargs["x"] = self.x
@@ -797,21 +846,22 @@ class ConditioningSetArea(BaseNode):
         # Call the node function
         result = node.append(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class ConditioningSetAreaPercentage(BaseNode):
     """ConditioningSetAreaPercentage node from ComfyUI (category: conditioning)"""
 
-    conditioning: Any = Field(default=None, description="conditioning parameter")
+    conditioning: Conditioning = Field(default=None, description="conditioning parameter")
     width: float = Field(default=1.0, description="width parameter", ge=0, le=1.0)
     height: float = Field(default=1.0, description="height parameter", ge=0, le=1.0)
     x: float = Field(default=0, description="x parameter", ge=0, le=1.0)
     y: float = Field(default=0, description="y parameter", ge=0, le=1.0)
     strength: float = Field(default=1.0, description="strength parameter", ge=0.0, le=10.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the ConditioningSetAreaPercentage node."""
         # Import the ComfyUI node class
         from nodes import ConditioningSetAreaPercentage
@@ -819,9 +869,9 @@ class ConditioningSetAreaPercentage(BaseNode):
         # Create node instance
         node = ConditioningSetAreaPercentage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning"] = self.conditioning
+        kwargs["conditioning"] = self.conditioning.value if self.conditioning else None
         kwargs["width"] = self.width
         kwargs["height"] = self.height
         kwargs["x"] = self.x
@@ -831,17 +881,18 @@ class ConditioningSetAreaPercentage(BaseNode):
         # Call the node function
         result = node.append(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class ConditioningSetAreaStrength(BaseNode):
     """ConditioningSetAreaStrength node from ComfyUI (category: conditioning)"""
 
-    conditioning: Any = Field(default=None, description="conditioning parameter")
+    conditioning: Conditioning = Field(default=None, description="conditioning parameter")
     strength: float = Field(default=1.0, description="strength parameter", ge=0.0, le=10.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the ConditioningSetAreaStrength node."""
         # Import the ComfyUI node class
         from nodes import ConditioningSetAreaStrength
@@ -849,27 +900,28 @@ class ConditioningSetAreaStrength(BaseNode):
         # Create node instance
         node = ConditioningSetAreaStrength()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning"] = self.conditioning
+        kwargs["conditioning"] = self.conditioning.value if self.conditioning else None
         kwargs["strength"] = self.strength
 
         # Call the node function
         result = node.append(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class ConditioningSetMask(BaseNode):
     """ConditioningSetMask node from ComfyUI (category: conditioning)"""
 
-    conditioning: Any = Field(default=None, description="conditioning parameter")
-    mask: Any = Field(default=None, description="mask parameter")
+    conditioning: Conditioning = Field(default=None, description="conditioning parameter")
+    mask: Mask = Field(default=None, description="mask parameter")
     strength: float = Field(default=1.0, description="strength parameter", ge=0.0, le=10.0)
     set_cond_area: str = Field(default=None, description="set_cond_area parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the ConditioningSetMask node."""
         # Import the ComfyUI node class
         from nodes import ConditioningSetMask
@@ -877,38 +929,39 @@ class ConditioningSetMask(BaseNode):
         # Create node instance
         node = ConditioningSetMask()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning"] = self.conditioning
-        kwargs["mask"] = self.mask
+        kwargs["conditioning"] = self.conditioning.value if self.conditioning else None
+        kwargs["mask"] = self.mask.value if self.mask else None
         kwargs["strength"] = self.strength
         kwargs["set_cond_area"] = self.set_cond_area
 
         # Call the node function
         result = node.append(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class KSamplerAdvanced(BaseNode):
     """KSamplerAdvanced node from ComfyUI (category: sampling)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     add_noise: str = Field(default=None, description="add_noise parameter")
     noise_seed: int = Field(default=0, description="noise_seed parameter", ge=0, le=18446744073709551615)
     steps: int = Field(default=20, description="steps parameter", ge=1, le=10000)
     cfg: float = Field(default=8.0, description="cfg parameter", ge=0.0, le=100.0)
     sampler_name: str = Field(default=None, description="sampler_name parameter")
     scheduler: str = Field(default=None, description="scheduler parameter")
-    positive: Any = Field(default=None, description="positive parameter")
-    negative: Any = Field(default=None, description="negative parameter")
-    latent_image: Any = Field(default=None, description="latent_image parameter")
+    positive: Conditioning = Field(default=None, description="positive parameter")
+    negative: Conditioning = Field(default=None, description="negative parameter")
+    latent_image: Latent = Field(default=None, description="latent_image parameter")
     start_at_step: int = Field(default=0, description="start_at_step parameter", ge=0, le=10000)
     end_at_step: int = Field(default=10000, description="end_at_step parameter", ge=0, le=10000)
     return_with_leftover_noise: str = Field(default=None, description="return_with_leftover_noise parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the KSamplerAdvanced node."""
         # Import the ComfyUI node class
         from nodes import KSamplerAdvanced
@@ -916,18 +969,18 @@ class KSamplerAdvanced(BaseNode):
         # Create node instance
         node = KSamplerAdvanced()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["add_noise"] = self.add_noise
         kwargs["noise_seed"] = self.noise_seed
         kwargs["steps"] = self.steps
         kwargs["cfg"] = self.cfg
         kwargs["sampler_name"] = self.sampler_name
         kwargs["scheduler"] = self.scheduler
-        kwargs["positive"] = self.positive
-        kwargs["negative"] = self.negative
-        kwargs["latent_image"] = self.latent_image
+        kwargs["positive"] = self.positive.value if self.positive else None
+        kwargs["negative"] = self.negative.value if self.negative else None
+        kwargs["latent_image"] = self.latent_image.value if self.latent_image else None
         kwargs["start_at_step"] = self.start_at_step
         kwargs["end_at_step"] = self.end_at_step
         kwargs["return_with_leftover_noise"] = self.return_with_leftover_noise
@@ -935,17 +988,18 @@ class KSamplerAdvanced(BaseNode):
         # Call the node function
         result = node.sample(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class SetLatentNoiseMask(BaseNode):
     """SetLatentNoiseMask node from ComfyUI (category: latent/inpaint)"""
 
-    samples: Any = Field(default=None, description="samples parameter")
-    mask: Any = Field(default=None, description="mask parameter")
+    samples: Latent = Field(default=None, description="samples parameter")
+    mask: Mask = Field(default=None, description="mask parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the SetLatentNoiseMask node."""
         # Import the ComfyUI node class
         from nodes import SetLatentNoiseMask
@@ -953,28 +1007,29 @@ class SetLatentNoiseMask(BaseNode):
         # Create node instance
         node = SetLatentNoiseMask()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples"] = self.samples
-        kwargs["mask"] = self.mask
+        kwargs["samples"] = self.samples.value if self.samples else None
+        kwargs["mask"] = self.mask.value if self.mask else None
 
         # Call the node function
         result = node.set_mask(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class LatentComposite(BaseNode):
     """LatentComposite node from ComfyUI (category: latent)"""
 
-    samples_to: Any = Field(default=None, description="samples_to parameter")
-    samples_from: Any = Field(default=None, description="samples_from parameter")
+    samples_to: Latent = Field(default=None, description="samples_to parameter")
+    samples_from: Latent = Field(default=None, description="samples_from parameter")
     x: int = Field(default=0, description="x parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     y: int = Field(default=0, description="y parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     feather: int = Field(default=0, description="feather parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the LatentComposite node."""
         # Import the ComfyUI node class
         from nodes import LatentComposite
@@ -982,10 +1037,10 @@ class LatentComposite(BaseNode):
         # Create node instance
         node = LatentComposite()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples_to"] = self.samples_to
-        kwargs["samples_from"] = self.samples_from
+        kwargs["samples_to"] = self.samples_to.value if self.samples_to else None
+        kwargs["samples_from"] = self.samples_from.value if self.samples_from else None
         kwargs["x"] = self.x
         kwargs["y"] = self.y
         kwargs["feather"] = self.feather
@@ -993,18 +1048,19 @@ class LatentComposite(BaseNode):
         # Call the node function
         result = node.composite(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class LatentBlend(BaseNode):
     """LatentBlend node from ComfyUI (category: _for_testing)"""
 
-    samples1: Any = Field(default=None, description="samples1 parameter")
-    samples2: Any = Field(default=None, description="samples2 parameter")
+    samples1: Latent = Field(default=None, description="samples1 parameter")
+    samples2: Latent = Field(default=None, description="samples2 parameter")
     blend_factor: float = Field(default=0.5, description="blend_factor parameter", ge=0, le=1)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the LatentBlend node."""
         # Import the ComfyUI node class
         from nodes import LatentBlend
@@ -1012,26 +1068,27 @@ class LatentBlend(BaseNode):
         # Create node instance
         node = LatentBlend()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples1"] = self.samples1
-        kwargs["samples2"] = self.samples2
+        kwargs["samples1"] = self.samples1.value if self.samples1 else None
+        kwargs["samples2"] = self.samples2.value if self.samples2 else None
         kwargs["blend_factor"] = self.blend_factor
 
         # Call the node function
         result = node.blend(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class LatentRotate(BaseNode):
     """LatentRotate node from ComfyUI (category: latent/transform)"""
 
-    samples: Any = Field(default=None, description="samples parameter")
+    samples: Latent = Field(default=None, description="samples parameter")
     rotation: str = Field(default=None, description="rotation parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the LatentRotate node."""
         # Import the ComfyUI node class
         from nodes import LatentRotate
@@ -1039,25 +1096,26 @@ class LatentRotate(BaseNode):
         # Create node instance
         node = LatentRotate()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples"] = self.samples
+        kwargs["samples"] = self.samples.value if self.samples else None
         kwargs["rotation"] = self.rotation
 
         # Call the node function
         result = node.rotate(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class LatentFlip(BaseNode):
     """LatentFlip node from ComfyUI (category: latent/transform)"""
 
-    samples: Any = Field(default=None, description="samples parameter")
+    samples: Latent = Field(default=None, description="samples parameter")
     flip_method: str = Field(default=None, description="flip_method parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the LatentFlip node."""
         # Import the ComfyUI node class
         from nodes import LatentFlip
@@ -1065,28 +1123,29 @@ class LatentFlip(BaseNode):
         # Create node instance
         node = LatentFlip()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples"] = self.samples
+        kwargs["samples"] = self.samples.value if self.samples else None
         kwargs["flip_method"] = self.flip_method
 
         # Call the node function
         result = node.flip(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class LatentCrop(BaseNode):
     """LatentCrop node from ComfyUI (category: latent/transform)"""
 
-    samples: Any = Field(default=None, description="samples parameter")
+    samples: Latent = Field(default=None, description="samples parameter")
     width: int = Field(default=512, description="width parameter", ge=64, le={'_ref': 'MAX_RESOLUTION'})
     height: int = Field(default=512, description="height parameter", ge=64, le={'_ref': 'MAX_RESOLUTION'})
     x: int = Field(default=0, description="x parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     y: int = Field(default=0, description="y parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the LatentCrop node."""
         # Import the ComfyUI node class
         from nodes import LatentCrop
@@ -1094,9 +1153,9 @@ class LatentCrop(BaseNode):
         # Create node instance
         node = LatentCrop()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples"] = self.samples
+        kwargs["samples"] = self.samples.value if self.samples else None
         kwargs["width"] = self.width
         kwargs["height"] = self.height
         kwargs["x"] = self.x
@@ -1105,8 +1164,9 @@ class LatentCrop(BaseNode):
         # Call the node function
         result = node.crop(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class LoraLoader(BaseNode):
@@ -1117,13 +1177,13 @@ class LoraLoader(BaseNode):
     ComfyUI Node ID: LoraLoader
     """
 
-    model: Any = Field(default=None, description="The diffusion model the LoRA will be applied to.")
-    clip: Any = Field(default=None, description="The CLIP model the LoRA will be applied to.")
+    model: Model = Field(default=None, description="The diffusion model the LoRA will be applied to.")
+    clip: Clip = Field(default=None, description="The CLIP model the LoRA will be applied to.")
     lora_name: Any = Field(default=None, description="The name of the LoRA.")
     strength_model: float = Field(default=1.0, description="How strongly to modify the diffusion model. This value can be negative.", le=100.0)
     strength_clip: float = Field(default=1.0, description="How strongly to modify the CLIP model. This value can be negative.", le=100.0)
 
-    async def process(self, context: ProcessingContext) -> tuple[Any, Any]:
+    async def process(self, context: ProcessingContext) -> tuple[Model, Clip]:
         """Process the LoraLoader node."""
         # Import the ComfyUI node class
         from nodes import LoraLoader
@@ -1131,10 +1191,10 @@ class LoraLoader(BaseNode):
         # Create node instance
         node = LoraLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
-        kwargs["clip"] = self.clip
+        kwargs["model"] = self.model.value if self.model else None
+        kwargs["clip"] = self.clip.value if self.clip else None
         kwargs["lora_name"] = self.lora_name
         kwargs["strength_model"] = self.strength_model
         kwargs["strength_clip"] = self.strength_clip
@@ -1142,8 +1202,15 @@ class LoraLoader(BaseNode):
         # Call the node function
         result = node.load_lora(**kwargs)
 
-        # Return result
-        return result if isinstance(result, tuple) else (result,)
+        # Wrap results in appropriate types
+        raw_results = result if isinstance(result, tuple) else (result,)
+        wrapped = []
+        for i, raw_val in enumerate(raw_results):
+            if i == 0:
+                wrapped.append(Model(raw_val))
+            if i == 1:
+                wrapped.append(Clip(raw_val))
+        return tuple(wrapped)
 
 
 class CLIPLoader(BaseNode):
@@ -1169,7 +1236,7 @@ omnigen2: qwen vl 2.5 3B
     type: str = Field(default=None, description="type parameter")
     device: Optional[str] = Field(default=None, description="device parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Clip:
         """Process the CLIPLoader node."""
         # Import the ComfyUI node class
         from nodes import CLIPLoader
@@ -1177,7 +1244,7 @@ omnigen2: qwen vl 2.5 3B
         # Create node instance
         node = CLIPLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["clip_name"] = self.clip_name
         kwargs["type"] = self.type
@@ -1187,8 +1254,9 @@ omnigen2: qwen vl 2.5 3B
         # Call the node function
         result = node.load_clip(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Clip(raw_result)
 
 
 class UNETLoader(BaseNode):
@@ -1197,7 +1265,7 @@ class UNETLoader(BaseNode):
     unet_name: Any = Field(default=None, description="unet_name parameter")
     weight_dtype: str = Field(default=None, description="weight_dtype parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the UNETLoader node."""
         # Import the ComfyUI node class
         from nodes import UNETLoader
@@ -1205,7 +1273,7 @@ class UNETLoader(BaseNode):
         # Create node instance
         node = UNETLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["unet_name"] = self.unet_name
         kwargs["weight_dtype"] = self.weight_dtype
@@ -1213,8 +1281,9 @@ class UNETLoader(BaseNode):
         # Call the node function
         result = node.load_unet(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class DualCLIPLoader(BaseNode):
@@ -1237,7 +1306,7 @@ newbie: gemma-3-4b-it, jina clip v2
     type: str = Field(default=None, description="type parameter")
     device: Optional[str] = Field(default=None, description="device parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Clip:
         """Process the DualCLIPLoader node."""
         # Import the ComfyUI node class
         from nodes import DualCLIPLoader
@@ -1245,7 +1314,7 @@ newbie: gemma-3-4b-it, jina clip v2
         # Create node instance
         node = DualCLIPLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["clip_name1"] = self.clip_name1
         kwargs["clip_name2"] = self.clip_name2
@@ -1256,15 +1325,16 @@ newbie: gemma-3-4b-it, jina clip v2
         # Call the node function
         result = node.load_clip(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Clip(raw_result)
 
 
 class CLIPVisionEncode(BaseNode):
     """CLIPVisionEncode node from ComfyUI (category: conditioning)"""
 
     clip_vision: Any = Field(default=None, description="clip_vision parameter")
-    image: Any = Field(default=None, description="image parameter")
+    image: ImageRef = Field(default=None, description="image parameter")
     crop: str = Field(default=None, description="crop parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
@@ -1275,29 +1345,29 @@ class CLIPVisionEncode(BaseNode):
         # Create node instance
         node = CLIPVisionEncode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["clip_vision"] = self.clip_vision
-        kwargs["image"] = self.image
+        kwargs["image"] = await context.image_to_tensor(self.image) if self.image else None
         kwargs["crop"] = self.crop
 
         # Call the node function
         result = node.encode(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result[0] if isinstance(result, tuple) else result
 
 
 class StyleModelApply(BaseNode):
     """StyleModelApply node from ComfyUI (category: conditioning/style_model)"""
 
-    conditioning: Any = Field(default=None, description="conditioning parameter")
-    style_model: Any = Field(default=None, description="style_model parameter")
+    conditioning: Conditioning = Field(default=None, description="conditioning parameter")
+    style_model: StyleModel = Field(default=None, description="style_model parameter")
     clip_vision_output: Any = Field(default=None, description="clip_vision_output parameter")
     strength: float = Field(default=1.0, description="strength parameter", ge=0.0, le=10.0)
     strength_type: str = Field(default=None, description="strength_type parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the StyleModelApply node."""
         # Import the ComfyUI node class
         from nodes import StyleModelApply
@@ -1305,10 +1375,10 @@ class StyleModelApply(BaseNode):
         # Create node instance
         node = StyleModelApply()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning"] = self.conditioning
-        kwargs["style_model"] = self.style_model
+        kwargs["conditioning"] = self.conditioning.value if self.conditioning else None
+        kwargs["style_model"] = self.style_model.value if self.style_model else None
         kwargs["clip_vision_output"] = self.clip_vision_output
         kwargs["strength"] = self.strength
         kwargs["strength_type"] = self.strength_type
@@ -1316,19 +1386,20 @@ class StyleModelApply(BaseNode):
         # Call the node function
         result = node.apply_stylemodel(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class unCLIPConditioning(BaseNode):
     """unCLIPConditioning node from ComfyUI (category: conditioning)"""
 
-    conditioning: Any = Field(default=None, description="conditioning parameter")
+    conditioning: Conditioning = Field(default=None, description="conditioning parameter")
     clip_vision_output: Any = Field(default=None, description="clip_vision_output parameter")
     strength: float = Field(default=1.0, description="strength parameter", le=10.0)
     noise_augmentation: float = Field(default=0.0, description="noise_augmentation parameter", ge=0.0, le=1.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the unCLIPConditioning node."""
         # Import the ComfyUI node class
         from nodes import unCLIPConditioning
@@ -1336,9 +1407,9 @@ class unCLIPConditioning(BaseNode):
         # Create node instance
         node = unCLIPConditioning()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning"] = self.conditioning
+        kwargs["conditioning"] = self.conditioning.value if self.conditioning else None
         kwargs["clip_vision_output"] = self.clip_vision_output
         kwargs["strength"] = self.strength
         kwargs["noise_augmentation"] = self.noise_augmentation
@@ -1346,23 +1417,24 @@ class unCLIPConditioning(BaseNode):
         # Call the node function
         result = node.apply_adm(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class ControlNetApplyAdvanced(BaseNode):
     """ControlNetApplyAdvanced node from ComfyUI (category: conditioning/controlnet)"""
 
-    positive: Any = Field(default=None, description="positive parameter")
-    negative: Any = Field(default=None, description="negative parameter")
-    control_net: Any = Field(default=None, description="control_net parameter")
-    image: Any = Field(default=None, description="image parameter")
+    positive: Conditioning = Field(default=None, description="positive parameter")
+    negative: Conditioning = Field(default=None, description="negative parameter")
+    control_net: ControlNet = Field(default=None, description="control_net parameter")
+    image: ImageRef = Field(default=None, description="image parameter")
     strength: float = Field(default=1.0, description="strength parameter", ge=0.0, le=10.0)
     start_percent: float = Field(default=0.0, description="start_percent parameter", ge=0.0, le=1.0)
     end_percent: float = Field(default=1.0, description="end_percent parameter", ge=0.0, le=1.0)
-    vae: Optional[Any] = Field(default=None, description="vae parameter")
+    vae: Optional[Vae] = Field(default=None, description="vae parameter")
 
-    async def process(self, context: ProcessingContext) -> tuple[Any, Any]:
+    async def process(self, context: ProcessingContext) -> tuple[Conditioning, Conditioning]:
         """Process the ControlNetApplyAdvanced node."""
         # Import the ComfyUI node class
         from nodes import ControlNetApplyAdvanced
@@ -1370,23 +1442,30 @@ class ControlNetApplyAdvanced(BaseNode):
         # Create node instance
         node = ControlNetApplyAdvanced()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["positive"] = self.positive
-        kwargs["negative"] = self.negative
-        kwargs["control_net"] = self.control_net
-        kwargs["image"] = self.image
+        kwargs["positive"] = self.positive.value if self.positive else None
+        kwargs["negative"] = self.negative.value if self.negative else None
+        kwargs["control_net"] = self.control_net.value if self.control_net else None
+        kwargs["image"] = await context.image_to_tensor(self.image) if self.image else None
         kwargs["strength"] = self.strength
         kwargs["start_percent"] = self.start_percent
         kwargs["end_percent"] = self.end_percent
         if self.vae is not None:
-            kwargs["vae"] = self.vae
+            kwargs["vae"] = self.vae.value if self.vae else None
 
         # Call the node function
         result = node.apply_controlnet(**kwargs)
 
-        # Return result
-        return result if isinstance(result, tuple) else (result,)
+        # Wrap results in appropriate types
+        raw_results = result if isinstance(result, tuple) else (result,)
+        wrapped = []
+        for i, raw_val in enumerate(raw_results):
+            if i == 0:
+                wrapped.append(Conditioning(raw_val))
+            if i == 1:
+                wrapped.append(Conditioning(raw_val))
+        return tuple(wrapped)
 
 
 class ControlNetLoader(BaseNode):
@@ -1394,7 +1473,7 @@ class ControlNetLoader(BaseNode):
 
     control_net_name: Any = Field(default=None, description="control_net_name parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> ControlNet:
         """Process the ControlNetLoader node."""
         # Import the ComfyUI node class
         from nodes import ControlNetLoader
@@ -1402,24 +1481,25 @@ class ControlNetLoader(BaseNode):
         # Create node instance
         node = ControlNetLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["control_net_name"] = self.control_net_name
 
         # Call the node function
         result = node.load_controlnet(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return ControlNet(raw_result)
 
 
 class DiffControlNetLoader(BaseNode):
     """DiffControlNetLoader node from ComfyUI (category: loaders)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     control_net_name: Any = Field(default=None, description="control_net_name parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> ControlNet:
         """Process the DiffControlNetLoader node."""
         # Import the ComfyUI node class
         from nodes import DiffControlNetLoader
@@ -1427,16 +1507,17 @@ class DiffControlNetLoader(BaseNode):
         # Create node instance
         node = DiffControlNetLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["control_net_name"] = self.control_net_name
 
         # Call the node function
         result = node.load_controlnet(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return ControlNet(raw_result)
 
 
 class StyleModelLoader(BaseNode):
@@ -1444,7 +1525,7 @@ class StyleModelLoader(BaseNode):
 
     style_model_name: Any = Field(default=None, description="style_model_name parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> StyleModel:
         """Process the StyleModelLoader node."""
         # Import the ComfyUI node class
         from nodes import StyleModelLoader
@@ -1452,15 +1533,16 @@ class StyleModelLoader(BaseNode):
         # Create node instance
         node = StyleModelLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["style_model_name"] = self.style_model_name
 
         # Call the node function
         result = node.load_style_model(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return StyleModel(raw_result)
 
 
 class CLIPVisionLoader(BaseNode):
@@ -1476,28 +1558,28 @@ class CLIPVisionLoader(BaseNode):
         # Create node instance
         node = CLIPVisionLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["clip_name"] = self.clip_name
 
         # Call the node function
         result = node.load_clip(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result[0] if isinstance(result, tuple) else result
 
 
 class VAEDecodeTiled(BaseNode):
     """VAEDecodeTiled node from ComfyUI (category: _for_testing)"""
 
-    samples: Any = Field(default=None, description="samples parameter")
-    vae: Any = Field(default=None, description="vae parameter")
+    samples: Latent = Field(default=None, description="samples parameter")
+    vae: Vae = Field(default=None, description="vae parameter")
     tile_size: int = Field(default=512, description="tile_size parameter", ge=64, le=4096)
     overlap: int = Field(default=64, description="overlap parameter", ge=0, le=4096)
     temporal_size: int = Field(default=64, description="Only used for video VAEs: Amount of frames to decode at a time.", ge=8, le=4096)
     temporal_overlap: int = Field(default=8, description="Only used for video VAEs: Amount of frames to overlap.", ge=4, le=4096)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> ImageRef:
         """Process the VAEDecodeTiled node."""
         # Import the ComfyUI node class
         from nodes import VAEDecodeTiled
@@ -1505,10 +1587,10 @@ class VAEDecodeTiled(BaseNode):
         # Create node instance
         node = VAEDecodeTiled()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples"] = self.samples
-        kwargs["vae"] = self.vae
+        kwargs["samples"] = self.samples.value if self.samples else None
+        kwargs["vae"] = self.vae.value if self.vae else None
         kwargs["tile_size"] = self.tile_size
         kwargs["overlap"] = self.overlap
         kwargs["temporal_size"] = self.temporal_size
@@ -1517,21 +1599,22 @@ class VAEDecodeTiled(BaseNode):
         # Call the node function
         result = node.decode(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return await context.image_from_tensor(raw_result)
 
 
 class VAEEncodeTiled(BaseNode):
     """VAEEncodeTiled node from ComfyUI (category: _for_testing)"""
 
-    pixels: Any = Field(default=None, description="pixels parameter")
-    vae: Any = Field(default=None, description="vae parameter")
+    pixels: ImageRef = Field(default=None, description="pixels parameter")
+    vae: Vae = Field(default=None, description="vae parameter")
     tile_size: int = Field(default=512, description="tile_size parameter", ge=64, le=4096)
     overlap: int = Field(default=64, description="overlap parameter", ge=0, le=4096)
     temporal_size: int = Field(default=64, description="Only used for video VAEs: Amount of frames to encode at a time.", ge=8, le=4096)
     temporal_overlap: int = Field(default=8, description="Only used for video VAEs: Amount of frames to overlap.", ge=4, le=4096)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the VAEEncodeTiled node."""
         # Import the ComfyUI node class
         from nodes import VAEEncodeTiled
@@ -1539,10 +1622,10 @@ class VAEEncodeTiled(BaseNode):
         # Create node instance
         node = VAEEncodeTiled()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["pixels"] = self.pixels
-        kwargs["vae"] = self.vae
+        kwargs["pixels"] = await context.image_to_tensor(self.pixels) if self.pixels else None
+        kwargs["vae"] = self.vae.value if self.vae else None
         kwargs["tile_size"] = self.tile_size
         kwargs["overlap"] = self.overlap
         kwargs["temporal_size"] = self.temporal_size
@@ -1551,8 +1634,9 @@ class VAEEncodeTiled(BaseNode):
         # Call the node function
         result = node.encode(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class unCLIPCheckpointLoader(BaseNode):
@@ -1560,7 +1644,7 @@ class unCLIPCheckpointLoader(BaseNode):
 
     ckpt_name: Any = Field(default=None, description="ckpt_name parameter")
 
-    async def process(self, context: ProcessingContext) -> tuple[Any, Any, Any, Any]:
+    async def process(self, context: ProcessingContext) -> tuple[Model, Clip, Vae, Any]:
         """Process the unCLIPCheckpointLoader node."""
         # Import the ComfyUI node class
         from nodes import unCLIPCheckpointLoader
@@ -1568,15 +1652,26 @@ class unCLIPCheckpointLoader(BaseNode):
         # Create node instance
         node = unCLIPCheckpointLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["ckpt_name"] = self.ckpt_name
 
         # Call the node function
         result = node.load_checkpoint(**kwargs)
 
-        # Return result
-        return result if isinstance(result, tuple) else (result,)
+        # Wrap results in appropriate types
+        raw_results = result if isinstance(result, tuple) else (result,)
+        wrapped = []
+        for i, raw_val in enumerate(raw_results):
+            if i == 0:
+                wrapped.append(Model(raw_val))
+            if i == 1:
+                wrapped.append(Clip(raw_val))
+            if i == 2:
+                wrapped.append(Vae(raw_val))
+            if i == 3:
+                wrapped.append(raw_val)
+        return tuple(wrapped)
 
 
 class GLIGENLoader(BaseNode):
@@ -1584,7 +1679,7 @@ class GLIGENLoader(BaseNode):
 
     gligen_name: Any = Field(default=None, description="gligen_name parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Gligen:
         """Process the GLIGENLoader node."""
         # Import the ComfyUI node class
         from nodes import GLIGENLoader
@@ -1592,30 +1687,31 @@ class GLIGENLoader(BaseNode):
         # Create node instance
         node = GLIGENLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["gligen_name"] = self.gligen_name
 
         # Call the node function
         result = node.load_gligen(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Gligen(raw_result)
 
 
 class GLIGENTextBoxApply(BaseNode):
     """GLIGENTextBoxApply node from ComfyUI (category: conditioning/gligen)"""
 
-    conditioning_to: Any = Field(default=None, description="conditioning_to parameter")
-    clip: Any = Field(default=None, description="clip parameter")
-    gligen_textbox_model: Any = Field(default=None, description="gligen_textbox_model parameter")
+    conditioning_to: Conditioning = Field(default=None, description="conditioning_to parameter")
+    clip: Clip = Field(default=None, description="clip parameter")
+    gligen_textbox_model: Gligen = Field(default=None, description="gligen_textbox_model parameter")
     text: str = Field(default='', description="text parameter")
     width: int = Field(default=64, description="width parameter", ge=8, le={'_ref': 'MAX_RESOLUTION'})
     height: int = Field(default=64, description="height parameter", ge=8, le={'_ref': 'MAX_RESOLUTION'})
     x: int = Field(default=0, description="x parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     y: int = Field(default=0, description="y parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the GLIGENTextBoxApply node."""
         # Import the ComfyUI node class
         from nodes import GLIGENTextBoxApply
@@ -1623,11 +1719,11 @@ class GLIGENTextBoxApply(BaseNode):
         # Create node instance
         node = GLIGENTextBoxApply()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning_to"] = self.conditioning_to
-        kwargs["clip"] = self.clip
-        kwargs["gligen_textbox_model"] = self.gligen_textbox_model
+        kwargs["conditioning_to"] = self.conditioning_to.value if self.conditioning_to else None
+        kwargs["clip"] = self.clip.value if self.clip else None
+        kwargs["gligen_textbox_model"] = self.gligen_textbox_model.value if self.gligen_textbox_model else None
         kwargs["text"] = self.text
         kwargs["width"] = self.width
         kwargs["height"] = self.height
@@ -1637,21 +1733,22 @@ class GLIGENTextBoxApply(BaseNode):
         # Call the node function
         result = node.append(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class InpaintModelConditioning(BaseNode):
     """InpaintModelConditioning node from ComfyUI (category: conditioning/inpaint)"""
 
-    positive: Any = Field(default=None, description="positive parameter")
-    negative: Any = Field(default=None, description="negative parameter")
-    vae: Any = Field(default=None, description="vae parameter")
-    pixels: Any = Field(default=None, description="pixels parameter")
-    mask: Any = Field(default=None, description="mask parameter")
+    positive: Conditioning = Field(default=None, description="positive parameter")
+    negative: Conditioning = Field(default=None, description="negative parameter")
+    vae: Vae = Field(default=None, description="vae parameter")
+    pixels: ImageRef = Field(default=None, description="pixels parameter")
+    mask: Mask = Field(default=None, description="mask parameter")
     noise_mask: bool = Field(default=True, description="Add a noise mask to the latent so sampling will only happen within the mask. Might improve results or completely break things depending on the model.")
 
-    async def process(self, context: ProcessingContext) -> tuple[Any, Any, Any]:
+    async def process(self, context: ProcessingContext) -> tuple[Conditioning, Conditioning, Latent]:
         """Process the InpaintModelConditioning node."""
         # Import the ComfyUI node class
         from nodes import InpaintModelConditioning
@@ -1659,20 +1756,29 @@ class InpaintModelConditioning(BaseNode):
         # Create node instance
         node = InpaintModelConditioning()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["positive"] = self.positive
-        kwargs["negative"] = self.negative
-        kwargs["vae"] = self.vae
-        kwargs["pixels"] = self.pixels
-        kwargs["mask"] = self.mask
+        kwargs["positive"] = self.positive.value if self.positive else None
+        kwargs["negative"] = self.negative.value if self.negative else None
+        kwargs["vae"] = self.vae.value if self.vae else None
+        kwargs["pixels"] = await context.image_to_tensor(self.pixels) if self.pixels else None
+        kwargs["mask"] = self.mask.value if self.mask else None
         kwargs["noise_mask"] = self.noise_mask
 
         # Call the node function
         result = node.encode(**kwargs)
 
-        # Return result
-        return result if isinstance(result, tuple) else (result,)
+        # Wrap results in appropriate types
+        raw_results = result if isinstance(result, tuple) else (result,)
+        wrapped = []
+        for i, raw_val in enumerate(raw_results):
+            if i == 0:
+                wrapped.append(Conditioning(raw_val))
+            if i == 1:
+                wrapped.append(Conditioning(raw_val))
+            if i == 2:
+                wrapped.append(Latent(raw_val))
+        return tuple(wrapped)
 
 
 class DiffusersLoader(BaseNode):
@@ -1680,7 +1786,7 @@ class DiffusersLoader(BaseNode):
 
     model_path: Any = Field(default=None, description="model_path parameter")
 
-    async def process(self, context: ProcessingContext) -> tuple[Any, Any, Any]:
+    async def process(self, context: ProcessingContext) -> tuple[Model, Clip, Vae]:
         """Process the DiffusersLoader node."""
         # Import the ComfyUI node class
         from nodes import DiffusersLoader
@@ -1688,22 +1794,31 @@ class DiffusersLoader(BaseNode):
         # Create node instance
         node = DiffusersLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["model_path"] = self.model_path
 
         # Call the node function
         result = node.load_checkpoint(**kwargs)
 
-        # Return result
-        return result if isinstance(result, tuple) else (result,)
+        # Wrap results in appropriate types
+        raw_results = result if isinstance(result, tuple) else (result,)
+        wrapped = []
+        for i, raw_val in enumerate(raw_results):
+            if i == 0:
+                wrapped.append(Model(raw_val))
+            if i == 1:
+                wrapped.append(Clip(raw_val))
+            if i == 2:
+                wrapped.append(Vae(raw_val))
+        return tuple(wrapped)
 
 
 class LoadLatent(BaseNode):
     """LoadLatent node from ComfyUI (category: _for_testing)"""
 
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Latent:
         """Process the LoadLatent node."""
         # Import the ComfyUI node class
         from nodes import LoadLatent
@@ -1711,20 +1826,21 @@ class LoadLatent(BaseNode):
         # Create node instance
         node = LoadLatent()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.load(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Latent(raw_result)
 
 
 class SaveLatent(BaseNode):
     """SaveLatent node from ComfyUI (category: _for_testing)"""
 
-    samples: Any = Field(default=None, description="samples parameter")
+    samples: Latent = Field(default=None, description="samples parameter")
     filename_prefix: str = Field(default='latents/ComfyUI', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
@@ -1735,24 +1851,24 @@ class SaveLatent(BaseNode):
         # Create node instance
         node = SaveLatent()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["samples"] = self.samples
+        kwargs["samples"] = self.samples.value if self.samples else None
         kwargs["filename_prefix"] = self.filename_prefix
 
         # Call the node function
         result = node.save(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
 class ConditioningZeroOut(BaseNode):
     """ConditioningZeroOut node from ComfyUI (category: advanced/conditioning)"""
 
-    conditioning: Any = Field(default=None, description="conditioning parameter")
+    conditioning: Conditioning = Field(default=None, description="conditioning parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the ConditioningZeroOut node."""
         # Import the ComfyUI node class
         from nodes import ConditioningZeroOut
@@ -1760,25 +1876,26 @@ class ConditioningZeroOut(BaseNode):
         # Create node instance
         node = ConditioningZeroOut()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning"] = self.conditioning
+        kwargs["conditioning"] = self.conditioning.value if self.conditioning else None
 
         # Call the node function
         result = node.zero_out(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class ConditioningSetTimestepRange(BaseNode):
     """ConditioningSetTimestepRange node from ComfyUI (category: advanced/conditioning)"""
 
-    conditioning: Any = Field(default=None, description="conditioning parameter")
+    conditioning: Conditioning = Field(default=None, description="conditioning parameter")
     start: float = Field(default=0.0, description="start parameter", ge=0.0, le=1.0)
     end: float = Field(default=1.0, description="end parameter", ge=0.0, le=1.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the ConditioningSetTimestepRange node."""
         # Import the ComfyUI node class
         from nodes import ConditioningSetTimestepRange
@@ -1786,27 +1903,28 @@ class ConditioningSetTimestepRange(BaseNode):
         # Create node instance
         node = ConditioningSetTimestepRange()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning"] = self.conditioning
+        kwargs["conditioning"] = self.conditioning.value if self.conditioning else None
         kwargs["start"] = self.start
         kwargs["end"] = self.end
 
         # Call the node function
         result = node.set_range(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class LoraLoaderModelOnly(BaseNode):
     """LoraLoaderModelOnly node from ComfyUI (category: uncategorized)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     lora_name: Any = Field(default=None, description="lora_name parameter")
     strength_model: float = Field(default=1.0, description="strength_model parameter", le=100.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the LoraLoaderModelOnly node."""
         # Import the ComfyUI node class
         from nodes import LoraLoaderModelOnly
@@ -1814,17 +1932,18 @@ class LoraLoaderModelOnly(BaseNode):
         # Create node instance
         node = LoraLoaderModelOnly()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["lora_name"] = self.lora_name
         kwargs["strength_model"] = self.strength_model
 
         # Call the node function
         result = node.load_lora_model_only(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class TextEncodeAceStepAudio(BaseNode):
@@ -1839,13 +1958,13 @@ class TextEncodeAceStepAudio(BaseNode):
         # Create node instance
         node = TextEncodeAceStepAudio()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -1861,13 +1980,13 @@ class EmptyAceStepLatentAudio(BaseNode):
         # Create node instance
         node = EmptyAceStepLatentAudio()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -1883,13 +2002,13 @@ class SamplerLCMUpscale(BaseNode):
         # Create node instance
         node = SamplerLCMUpscale()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -1905,13 +2024,13 @@ class SamplerEulerCFGpp(BaseNode):
         # Create node instance
         node = SamplerEulerCFGpp()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -1927,13 +2046,13 @@ class AlignYourStepsScheduler(BaseNode):
         # Create node instance
         node = AlignYourStepsScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -1949,13 +2068,13 @@ class APG(BaseNode):
         # Create node instance
         node = APG()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -1971,13 +2090,13 @@ class UNetSelfAttentionMultiply(BaseNode):
         # Create node instance
         node = UNetSelfAttentionMultiply()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -1993,13 +2112,13 @@ class UNetCrossAttentionMultiply(BaseNode):
         # Create node instance
         node = UNetCrossAttentionMultiply()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2015,13 +2134,13 @@ class CLIPAttentionMultiply(BaseNode):
         # Create node instance
         node = CLIPAttentionMultiply()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2037,13 +2156,13 @@ class UNetTemporalAttentionMultiply(BaseNode):
         # Create node instance
         node = UNetTemporalAttentionMultiply()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2059,13 +2178,13 @@ class EmptyLatentAudio(BaseNode):
         # Create node instance
         node = EmptyLatentAudio()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2081,13 +2200,13 @@ class ConditioningStableAudio(BaseNode):
         # Create node instance
         node = ConditioningStableAudio()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2103,13 +2222,13 @@ class VAEEncodeAudio(BaseNode):
         # Create node instance
         node = VAEEncodeAudio()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2125,13 +2244,13 @@ class VAEDecodeAudio(BaseNode):
         # Create node instance
         node = VAEDecodeAudio()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2147,13 +2266,13 @@ class SaveAudio(BaseNode):
         # Create node instance
         node = SaveAudio()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2169,13 +2288,13 @@ class SaveAudioMP3(BaseNode):
         # Create node instance
         node = SaveAudioMP3()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2191,13 +2310,13 @@ class SaveAudioOpus(BaseNode):
         # Create node instance
         node = SaveAudioOpus()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2213,13 +2332,13 @@ class PreviewAudio(BaseNode):
         # Create node instance
         node = PreviewAudio()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2235,13 +2354,13 @@ class LoadAudio(BaseNode):
         # Create node instance
         node = LoadAudio()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2257,13 +2376,13 @@ class RecordAudio(BaseNode):
         # Create node instance
         node = RecordAudio()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2284,13 +2403,13 @@ class TrimAudioDuration(BaseNode):
         # Create node instance
         node = TrimAudioDuration()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2311,13 +2430,13 @@ class SplitAudioChannels(BaseNode):
         # Create node instance
         node = SplitAudioChannels()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2338,13 +2457,13 @@ class AudioConcat(BaseNode):
         # Create node instance
         node = AudioConcat()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2365,13 +2484,13 @@ class AudioMerge(BaseNode):
         # Create node instance
         node = AudioMerge()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2387,13 +2506,13 @@ class AudioAdjustVolume(BaseNode):
         # Create node instance
         node = AudioAdjustVolume()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2409,13 +2528,13 @@ class EmptyAudio(BaseNode):
         # Create node instance
         node = EmptyAudio()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2431,13 +2550,13 @@ class AudioEncoderLoader(BaseNode):
         # Create node instance
         node = AudioEncoderLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2453,13 +2572,13 @@ class AudioEncoderEncode(BaseNode):
         # Create node instance
         node = AudioEncoderEncode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2475,13 +2594,13 @@ class WanCameraEmbedding(BaseNode):
         # Create node instance
         node = WanCameraEmbedding()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2497,13 +2616,13 @@ class Canny(BaseNode):
         # Create node instance
         node = Canny()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2519,13 +2638,13 @@ class CFGZeroStar(BaseNode):
         # Create node instance
         node = CFGZeroStar()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2541,13 +2660,13 @@ class CFGNorm(BaseNode):
         # Create node instance
         node = CFGNorm()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2563,13 +2682,13 @@ class EmptyChromaRadianceLatentImage(BaseNode):
         # Create node instance
         node = EmptyChromaRadianceLatentImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2590,13 +2709,13 @@ class ChromaRadianceOptions(BaseNode):
         # Create node instance
         node = ChromaRadianceOptions()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2612,13 +2731,13 @@ class CLIPTextEncodeSDXLRefiner(BaseNode):
         # Create node instance
         node = CLIPTextEncodeSDXLRefiner()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2634,13 +2753,13 @@ class CLIPTextEncodeSDXL(BaseNode):
         # Create node instance
         node = CLIPTextEncodeSDXL()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2656,13 +2775,13 @@ class PorterDuffImageComposite(BaseNode):
         # Create node instance
         node = PorterDuffImageComposite()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2678,13 +2797,13 @@ class SplitImageWithAlpha(BaseNode):
         # Create node instance
         node = SplitImageWithAlpha()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2700,13 +2819,13 @@ class JoinImageWithAlpha(BaseNode):
         # Create node instance
         node = JoinImageWithAlpha()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2722,13 +2841,13 @@ class CLIPTextEncodeControlnet(BaseNode):
         # Create node instance
         node = CLIPTextEncodeControlnet()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2744,13 +2863,13 @@ class T5TokenizerOptions(BaseNode):
         # Create node instance
         node = T5TokenizerOptions()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2771,13 +2890,13 @@ class ContextWindowsManualNode(BaseNode):
         # Create node instance
         node = ContextWindowsManualNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2793,13 +2912,13 @@ class SetUnionControlNetType(BaseNode):
         # Create node instance
         node = SetUnionControlNetType()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2815,13 +2934,13 @@ class ControlNetInpaintingAliMamaApply(BaseNode):
         # Create node instance
         node = ControlNetInpaintingAliMamaApply()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2837,13 +2956,13 @@ class EmptyCosmosLatentVideo(BaseNode):
         # Create node instance
         node = EmptyCosmosLatentVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2859,13 +2978,13 @@ class CosmosImageToVideoLatent(BaseNode):
         # Create node instance
         node = CosmosImageToVideoLatent()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2881,13 +3000,13 @@ class CosmosPredict2ImageToVideoLatent(BaseNode):
         # Create node instance
         node = CosmosPredict2ImageToVideoLatent()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2903,13 +3022,13 @@ class BasicScheduler(BaseNode):
         # Create node instance
         node = BasicScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2925,13 +3044,13 @@ class KarrasScheduler(BaseNode):
         # Create node instance
         node = KarrasScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2947,13 +3066,13 @@ class ExponentialScheduler(BaseNode):
         # Create node instance
         node = ExponentialScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2969,13 +3088,13 @@ class PolyexponentialScheduler(BaseNode):
         # Create node instance
         node = PolyexponentialScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -2991,13 +3110,13 @@ class LaplaceScheduler(BaseNode):
         # Create node instance
         node = LaplaceScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3013,13 +3132,13 @@ class SDTurboScheduler(BaseNode):
         # Create node instance
         node = SDTurboScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3035,13 +3154,13 @@ class BetaSamplingScheduler(BaseNode):
         # Create node instance
         node = BetaSamplingScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3057,13 +3176,13 @@ class VPScheduler(BaseNode):
         # Create node instance
         node = VPScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3079,13 +3198,13 @@ class SplitSigmas(BaseNode):
         # Create node instance
         node = SplitSigmas()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3101,13 +3220,13 @@ class SplitSigmasDenoise(BaseNode):
         # Create node instance
         node = SplitSigmasDenoise()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3123,13 +3242,13 @@ class FlipSigmas(BaseNode):
         # Create node instance
         node = FlipSigmas()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3145,13 +3264,13 @@ class SetFirstSigma(BaseNode):
         # Create node instance
         node = SetFirstSigma()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3167,13 +3286,13 @@ class ExtendIntermediateSigmas(BaseNode):
         # Create node instance
         node = ExtendIntermediateSigmas()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3189,13 +3308,13 @@ class SamplingPercentToSigma(BaseNode):
         # Create node instance
         node = SamplingPercentToSigma()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3211,13 +3330,13 @@ class KSamplerSelect(BaseNode):
         # Create node instance
         node = KSamplerSelect()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3233,13 +3352,13 @@ class SamplerDPMPP_3M_SDE(BaseNode):
         # Create node instance
         node = SamplerDPMPP_3M_SDE()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3255,13 +3374,13 @@ class SamplerDPMPP_2M_SDE(BaseNode):
         # Create node instance
         node = SamplerDPMPP_2M_SDE()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3277,13 +3396,13 @@ class SamplerDPMPP_SDE(BaseNode):
         # Create node instance
         node = SamplerDPMPP_SDE()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3299,13 +3418,13 @@ class SamplerDPMPP_2S_Ancestral(BaseNode):
         # Create node instance
         node = SamplerDPMPP_2S_Ancestral()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3321,13 +3440,13 @@ class SamplerEulerAncestral(BaseNode):
         # Create node instance
         node = SamplerEulerAncestral()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3343,13 +3462,13 @@ class SamplerEulerAncestralCFGPP(BaseNode):
         # Create node instance
         node = SamplerEulerAncestralCFGPP()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3365,13 +3484,13 @@ class SamplerLMS(BaseNode):
         # Create node instance
         node = SamplerLMS()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3387,13 +3506,13 @@ class SamplerDPMAdaptative(BaseNode):
         # Create node instance
         node = SamplerDPMAdaptative()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3409,13 +3528,13 @@ class SamplerER_SDE(BaseNode):
         # Create node instance
         node = SamplerER_SDE()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3431,13 +3550,13 @@ class SamplerSASolver(BaseNode):
         # Create node instance
         node = SamplerSASolver()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3467,13 +3586,13 @@ exp_heun_2_x0_sde
         # Create node instance
         node = SamplerSEEDS2()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3489,13 +3608,13 @@ class SamplerCustom(BaseNode):
         # Create node instance
         node = SamplerCustom()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3511,13 +3630,13 @@ class BasicGuider(BaseNode):
         # Create node instance
         node = BasicGuider()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3533,13 +3652,13 @@ class CFGGuider(BaseNode):
         # Create node instance
         node = CFGGuider()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3555,13 +3674,13 @@ class DualCFGGuider(BaseNode):
         # Create node instance
         node = DualCFGGuider()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3577,13 +3696,13 @@ class DisableNoise(BaseNode):
         # Create node instance
         node = DisableNoise()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3599,13 +3718,13 @@ class RandomNoise(BaseNode):
         # Create node instance
         node = RandomNoise()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3621,13 +3740,13 @@ class SamplerCustomAdvanced(BaseNode):
         # Create node instance
         node = SamplerCustomAdvanced()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3643,13 +3762,13 @@ class AddNoise(BaseNode):
         # Create node instance
         node = AddNoise()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3665,13 +3784,13 @@ class ManualSigmas(BaseNode):
         # Create node instance
         node = ManualSigmas()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3687,13 +3806,13 @@ class LoadImageDataSetFromFolderNode(BaseNode):
         # Create node instance
         node = LoadImageDataSetFromFolderNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3709,13 +3828,13 @@ class LoadImageTextDataSetFromFolderNode(BaseNode):
         # Create node instance
         node = LoadImageTextDataSetFromFolderNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3731,13 +3850,13 @@ class SaveImageDataSetToFolderNode(BaseNode):
         # Create node instance
         node = SaveImageDataSetToFolderNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3753,13 +3872,13 @@ class SaveImageTextDataSetToFolderNode(BaseNode):
         # Create node instance
         node = SaveImageTextDataSetToFolderNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3775,13 +3894,13 @@ class ImageProcessingNode(BaseNode):
         # Create node instance
         node = ImageProcessingNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3797,13 +3916,13 @@ class TextProcessingNode(BaseNode):
         # Create node instance
         node = TextProcessingNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3819,13 +3938,13 @@ class ShuffleImageTextDatasetNode(BaseNode):
         # Create node instance
         node = ShuffleImageTextDatasetNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3841,13 +3960,13 @@ class ResolutionBucket(BaseNode):
         # Create node instance
         node = ResolutionBucket()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3863,13 +3982,13 @@ class MakeTrainingDataset(BaseNode):
         # Create node instance
         node = MakeTrainingDataset()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3885,13 +4004,13 @@ class SaveTrainingDataset(BaseNode):
         # Create node instance
         node = SaveTrainingDataset()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3907,13 +4026,13 @@ class LoadTrainingDataset(BaseNode):
         # Create node instance
         node = LoadTrainingDataset()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3929,13 +4048,13 @@ class DifferentialDiffusion(BaseNode):
         # Create node instance
         node = DifferentialDiffusion()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3956,13 +4075,13 @@ class EasyCacheNode(BaseNode):
         # Create node instance
         node = EasyCacheNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -3983,13 +4102,13 @@ class LazyCacheNode(BaseNode):
         # Create node instance
         node = LazyCacheNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4010,13 +4129,13 @@ class ReferenceLatent(BaseNode):
         # Create node instance
         node = ReferenceLatent()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4032,13 +4151,13 @@ class EpsilonScaling(BaseNode):
         # Create node instance
         node = EpsilonScaling()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4063,13 +4182,13 @@ Rescaling the model's score or noise to steer the sampling diversity.
         # Create node instance
         node = TemporalScoreRescaling()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4085,13 +4204,13 @@ class CLIPTextEncodeFlux(BaseNode):
         # Create node instance
         node = CLIPTextEncodeFlux()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4107,13 +4226,13 @@ class EmptyFlux2LatentImage(BaseNode):
         # Create node instance
         node = EmptyFlux2LatentImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4129,13 +4248,13 @@ class FluxGuidance(BaseNode):
         # Create node instance
         node = FluxGuidance()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4156,13 +4275,13 @@ class FluxDisableGuidance(BaseNode):
         # Create node instance
         node = FluxDisableGuidance()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4183,13 +4302,13 @@ class FluxKontextImageScale(BaseNode):
         # Create node instance
         node = FluxKontextImageScale()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4205,13 +4324,13 @@ class FluxKontextMultiReferenceLatentMethod(BaseNode):
         # Create node instance
         node = FluxKontextMultiReferenceLatentMethod()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4227,13 +4346,13 @@ class Flux2Scheduler(BaseNode):
         # Create node instance
         node = Flux2Scheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4249,13 +4368,13 @@ class FreeU(BaseNode):
         # Create node instance
         node = FreeU()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4271,13 +4390,13 @@ class FreeU_V2(BaseNode):
         # Create node instance
         node = FreeU_V2()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4298,13 +4417,13 @@ class FreSca(BaseNode):
         # Create node instance
         node = FreSca()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4320,13 +4439,13 @@ class GITSScheduler(BaseNode):
         # Create node instance
         node = GITSScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4349,13 +4468,13 @@ hidream: long clip-l, long clip-g, t5xxl, llama_8b_3.1_instruct
         # Create node instance
         node = QuadrupleCLIPLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4371,13 +4490,13 @@ class CLIPTextEncodeHiDream(BaseNode):
         # Create node instance
         node = CLIPTextEncodeHiDream()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4393,13 +4512,13 @@ class CLIPTextEncodeHunyuanDiT(BaseNode):
         # Create node instance
         node = CLIPTextEncodeHunyuanDiT()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4415,13 +4534,13 @@ class EmptyHunyuanLatentVideo(BaseNode):
         # Create node instance
         node = EmptyHunyuanLatentVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4437,13 +4556,13 @@ class HunyuanVideo15ImageToVideo(BaseNode):
         # Create node instance
         node = HunyuanVideo15ImageToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4459,13 +4578,13 @@ class HunyuanVideo15SuperResolution(BaseNode):
         # Create node instance
         node = HunyuanVideo15SuperResolution()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4481,13 +4600,13 @@ class LatentUpscaleModelLoader(BaseNode):
         # Create node instance
         node = LatentUpscaleModelLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4503,13 +4622,13 @@ class HunyuanVideo15LatentUpscaleWithModel(BaseNode):
         # Create node instance
         node = HunyuanVideo15LatentUpscaleWithModel()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4525,13 +4644,13 @@ class TextEncodeHunyuanVideo_ImageToVideo(BaseNode):
         # Create node instance
         node = TextEncodeHunyuanVideo_ImageToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4547,13 +4666,13 @@ class HunyuanImageToVideo(BaseNode):
         # Create node instance
         node = HunyuanImageToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4569,13 +4688,13 @@ class EmptyHunyuanImageLatent(BaseNode):
         # Create node instance
         node = EmptyHunyuanImageLatent()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4591,13 +4710,13 @@ class HunyuanRefinerLatent(BaseNode):
         # Create node instance
         node = HunyuanRefinerLatent()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4613,13 +4732,13 @@ class EmptyLatentHunyuan3Dv2(BaseNode):
         # Create node instance
         node = EmptyLatentHunyuan3Dv2()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4635,13 +4754,13 @@ class Hunyuan3Dv2Conditioning(BaseNode):
         # Create node instance
         node = Hunyuan3Dv2Conditioning()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4657,13 +4776,13 @@ class Hunyuan3Dv2ConditioningMultiView(BaseNode):
         # Create node instance
         node = Hunyuan3Dv2ConditioningMultiView()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4679,13 +4798,13 @@ class VAEDecodeHunyuan3D(BaseNode):
         # Create node instance
         node = VAEDecodeHunyuan3D()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4701,13 +4820,13 @@ class VoxelToMeshBasic(BaseNode):
         # Create node instance
         node = VoxelToMeshBasic()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4723,13 +4842,13 @@ class VoxelToMesh(BaseNode):
         # Create node instance
         node = VoxelToMesh()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4745,13 +4864,13 @@ class SaveGLB(BaseNode):
         # Create node instance
         node = SaveGLB()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4767,13 +4886,13 @@ class HypernetworkLoader(BaseNode):
         # Create node instance
         node = HypernetworkLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4789,13 +4908,13 @@ class HyperTile(BaseNode):
         # Create node instance
         node = HyperTile()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4811,13 +4930,13 @@ class ImageCrop(BaseNode):
         # Create node instance
         node = ImageCrop()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4833,13 +4952,13 @@ class RepeatImageBatch(BaseNode):
         # Create node instance
         node = RepeatImageBatch()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4855,13 +4974,13 @@ class ImageFromBatch(BaseNode):
         # Create node instance
         node = ImageFromBatch()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4877,13 +4996,13 @@ class ImageAddNoise(BaseNode):
         # Create node instance
         node = ImageAddNoise()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4899,13 +5018,13 @@ class SaveAnimatedWEBP(BaseNode):
         # Create node instance
         node = SaveAnimatedWEBP()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4921,13 +5040,13 @@ class SaveAnimatedPNG(BaseNode):
         # Create node instance
         node = SaveAnimatedPNG()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4950,13 +5069,13 @@ Optional spacing can be added between images.
         # Create node instance
         node = ImageStitch()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4972,13 +5091,13 @@ class ResizeAndPadImage(BaseNode):
         # Create node instance
         node = ResizeAndPadImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -4999,13 +5118,13 @@ class SaveSVGNode(BaseNode):
         # Create node instance
         node = SaveSVGNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5026,13 +5145,13 @@ class GetImageSize(BaseNode):
         # Create node instance
         node = GetImageSize()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5048,13 +5167,13 @@ class ImageRotate(BaseNode):
         # Create node instance
         node = ImageRotate()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5070,13 +5189,13 @@ class ImageFlip(BaseNode):
         # Create node instance
         node = ImageFlip()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5092,13 +5211,13 @@ class ImageScaleToMaxDimension(BaseNode):
         # Create node instance
         node = ImageScaleToMaxDimension()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5114,13 +5233,13 @@ class InstructPixToPixConditioning(BaseNode):
         # Create node instance
         node = InstructPixToPixConditioning()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5136,13 +5255,13 @@ class Kandinsky5ImageToVideo(BaseNode):
         # Create node instance
         node = Kandinsky5ImageToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5163,13 +5282,13 @@ class NormalizeVideoLatentStart(BaseNode):
         # Create node instance
         node = NormalizeVideoLatentStart()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5185,13 +5304,13 @@ class CLIPTextEncodeKandinsky5(BaseNode):
         # Create node instance
         node = CLIPTextEncodeKandinsky5()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5207,13 +5326,13 @@ class LatentAdd(BaseNode):
         # Create node instance
         node = LatentAdd()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5229,13 +5348,13 @@ class LatentSubtract(BaseNode):
         # Create node instance
         node = LatentSubtract()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5251,13 +5370,13 @@ class LatentMultiply(BaseNode):
         # Create node instance
         node = LatentMultiply()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5273,13 +5392,13 @@ class LatentInterpolate(BaseNode):
         # Create node instance
         node = LatentInterpolate()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5295,13 +5414,13 @@ class LatentConcat(BaseNode):
         # Create node instance
         node = LatentConcat()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5317,13 +5436,13 @@ class LatentCut(BaseNode):
         # Create node instance
         node = LatentCut()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5339,13 +5458,13 @@ class LatentCutToBatch(BaseNode):
         # Create node instance
         node = LatentCutToBatch()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5361,13 +5480,13 @@ class LatentBatch(BaseNode):
         # Create node instance
         node = LatentBatch()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5383,13 +5502,13 @@ class LatentBatchSeedBehavior(BaseNode):
         # Create node instance
         node = LatentBatchSeedBehavior()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5405,13 +5524,13 @@ class LatentApplyOperation(BaseNode):
         # Create node instance
         node = LatentApplyOperation()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5427,13 +5546,13 @@ class LatentApplyOperationCFG(BaseNode):
         # Create node instance
         node = LatentApplyOperationCFG()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5449,13 +5568,13 @@ class LatentOperationTonemapReinhard(BaseNode):
         # Create node instance
         node = LatentOperationTonemapReinhard()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5471,13 +5590,13 @@ class LatentOperationSharpen(BaseNode):
         # Create node instance
         node = LatentOperationSharpen()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5493,13 +5612,13 @@ class ReplaceVideoLatentFrames(BaseNode):
         # Create node instance
         node = ReplaceVideoLatentFrames()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5515,13 +5634,13 @@ class Load3D(BaseNode):
         # Create node instance
         node = Load3D()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5537,13 +5656,13 @@ class Preview3D(BaseNode):
         # Create node instance
         node = Preview3D()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5559,13 +5678,13 @@ class SwitchNode(BaseNode):
         # Create node instance
         node = SwitchNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5581,13 +5700,13 @@ class SoftSwitchNode(BaseNode):
         # Create node instance
         node = SoftSwitchNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5603,13 +5722,13 @@ class CustomComboNode(BaseNode):
         # Create node instance
         node = CustomComboNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5625,13 +5744,13 @@ class DCTestNode(BaseNode):
         # Create node instance
         node = DCTestNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5647,13 +5766,13 @@ class AutogrowNamesTestNode(BaseNode):
         # Create node instance
         node = AutogrowNamesTestNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5669,13 +5788,13 @@ class AutogrowPrefixTestNode(BaseNode):
         # Create node instance
         node = AutogrowPrefixTestNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5691,13 +5810,13 @@ class ComboOutputTestNode(BaseNode):
         # Create node instance
         node = ComboOutputTestNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5713,13 +5832,13 @@ class ConvertStringToComboNode(BaseNode):
         # Create node instance
         node = ConvertStringToComboNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5735,13 +5854,13 @@ class InvertBooleanNode(BaseNode):
         # Create node instance
         node = InvertBooleanNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5757,13 +5876,13 @@ class LoraSave(BaseNode):
         # Create node instance
         node = LoraSave()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5779,13 +5898,13 @@ class LotusConditioning(BaseNode):
         # Create node instance
         node = LotusConditioning()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5801,13 +5920,13 @@ class EmptyLTXVLatentVideo(BaseNode):
         # Create node instance
         node = EmptyLTXVLatentVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5823,13 +5942,13 @@ class LTXVImgToVideo(BaseNode):
         # Create node instance
         node = LTXVImgToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5845,13 +5964,13 @@ class LTXVAddGuide(BaseNode):
         # Create node instance
         node = LTXVAddGuide()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5867,13 +5986,13 @@ class LTXVCropGuides(BaseNode):
         # Create node instance
         node = LTXVCropGuides()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5889,13 +6008,13 @@ class LTXVConditioning(BaseNode):
         # Create node instance
         node = LTXVConditioning()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5911,13 +6030,13 @@ class ModelSamplingLTXV(BaseNode):
         # Create node instance
         node = ModelSamplingLTXV()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5933,13 +6052,13 @@ class LTXVScheduler(BaseNode):
         # Create node instance
         node = LTXVScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5955,13 +6074,13 @@ class LTXVPreprocess(BaseNode):
         # Create node instance
         node = LTXVPreprocess()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -5977,13 +6096,13 @@ class RenormCFG(BaseNode):
         # Create node instance
         node = RenormCFG()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6004,13 +6123,13 @@ class CLIPTextEncodeLumina2(BaseNode):
         # Create node instance
         node = CLIPTextEncodeLumina2()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6031,13 +6150,13 @@ class Mahiro(BaseNode):
         # Create node instance
         node = Mahiro()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6053,13 +6172,13 @@ class LatentCompositeMasked(BaseNode):
         # Create node instance
         node = LatentCompositeMasked()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6075,13 +6194,13 @@ class ImageCompositeMasked(BaseNode):
         # Create node instance
         node = ImageCompositeMasked()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6097,13 +6216,13 @@ class MaskToImage(BaseNode):
         # Create node instance
         node = MaskToImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6119,13 +6238,13 @@ class ImageToMask(BaseNode):
         # Create node instance
         node = ImageToMask()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6141,13 +6260,13 @@ class ImageColorToMask(BaseNode):
         # Create node instance
         node = ImageColorToMask()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6163,13 +6282,13 @@ class SolidMask(BaseNode):
         # Create node instance
         node = SolidMask()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6185,13 +6304,13 @@ class InvertMask(BaseNode):
         # Create node instance
         node = InvertMask()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6207,13 +6326,13 @@ class CropMask(BaseNode):
         # Create node instance
         node = CropMask()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6229,13 +6348,13 @@ class MaskComposite(BaseNode):
         # Create node instance
         node = MaskComposite()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6251,13 +6370,13 @@ class FeatherMask(BaseNode):
         # Create node instance
         node = FeatherMask()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6273,13 +6392,13 @@ class GrowMask(BaseNode):
         # Create node instance
         node = GrowMask()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6295,13 +6414,13 @@ class ThresholdMask(BaseNode):
         # Create node instance
         node = ThresholdMask()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6322,13 +6441,13 @@ class MaskPreview(BaseNode):
         # Create node instance
         node = MaskPreview()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6344,24 +6463,24 @@ class EmptyMochiLatentVideo(BaseNode):
         # Create node instance
         node = EmptyMochiLatentVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
 class ModelSamplingDiscrete(BaseNode):
     """ModelSamplingDiscrete node from ComfyUI (category: advanced/model)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     sampling: str = Field(default=None, description="sampling parameter")
     zsnr: bool = Field(default=False, description="zsnr parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the ModelSamplingDiscrete node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_advanced import ModelSamplingDiscrete
@@ -6369,28 +6488,29 @@ class ModelSamplingDiscrete(BaseNode):
         # Create node instance
         node = ModelSamplingDiscrete()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["sampling"] = self.sampling
         kwargs["zsnr"] = self.zsnr
 
         # Call the node function
         result = node.patch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class ModelSamplingContinuousEDM(BaseNode):
     """ModelSamplingContinuousEDM node from ComfyUI (category: advanced/model)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     sampling: str = Field(default=None, description="sampling parameter")
     sigma_max: float = Field(default=120.0, description="sigma_max parameter", ge=0.0, le=1000.0)
     sigma_min: float = Field(default=0.002, description="sigma_min parameter", ge=0.0, le=1000.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the ModelSamplingContinuousEDM node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_advanced import ModelSamplingContinuousEDM
@@ -6398,9 +6518,9 @@ class ModelSamplingContinuousEDM(BaseNode):
         # Create node instance
         node = ModelSamplingContinuousEDM()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["sampling"] = self.sampling
         kwargs["sigma_max"] = self.sigma_max
         kwargs["sigma_min"] = self.sigma_min
@@ -6408,19 +6528,20 @@ class ModelSamplingContinuousEDM(BaseNode):
         # Call the node function
         result = node.patch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class ModelSamplingContinuousV(BaseNode):
     """ModelSamplingContinuousV node from ComfyUI (category: advanced/model)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     sampling: str = Field(default=None, description="sampling parameter")
     sigma_max: float = Field(default=500.0, description="sigma_max parameter", ge=0.0, le=1000.0)
     sigma_min: float = Field(default=0.03, description="sigma_min parameter", ge=0.0, le=1000.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the ModelSamplingContinuousV node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_advanced import ModelSamplingContinuousV
@@ -6428,9 +6549,9 @@ class ModelSamplingContinuousV(BaseNode):
         # Create node instance
         node = ModelSamplingContinuousV()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["sampling"] = self.sampling
         kwargs["sigma_max"] = self.sigma_max
         kwargs["sigma_min"] = self.sigma_min
@@ -6438,17 +6559,18 @@ class ModelSamplingContinuousV(BaseNode):
         # Call the node function
         result = node.patch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class ModelSamplingStableCascade(BaseNode):
     """ModelSamplingStableCascade node from ComfyUI (category: advanced/model)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     shift: float = Field(default=2.0, description="shift parameter", ge=0.0, le=100.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the ModelSamplingStableCascade node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_advanced import ModelSamplingStableCascade
@@ -6456,25 +6578,26 @@ class ModelSamplingStableCascade(BaseNode):
         # Create node instance
         node = ModelSamplingStableCascade()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["shift"] = self.shift
 
         # Call the node function
         result = node.patch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class ModelSamplingSD3(BaseNode):
     """ModelSamplingSD3 node from ComfyUI (category: advanced/model)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     shift: float = Field(default=3.0, description="shift parameter", ge=0.0, le=100.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the ModelSamplingSD3 node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_advanced import ModelSamplingSD3
@@ -6482,22 +6605,23 @@ class ModelSamplingSD3(BaseNode):
         # Create node instance
         node = ModelSamplingSD3()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["shift"] = self.shift
 
         # Call the node function
         result = node.patch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class ModelSamplingAuraFlow(BaseNode):
     """ModelSamplingAuraFlow node from ComfyUI (category: uncategorized)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     shift: float = Field(default=1.73, description="shift parameter", ge=0.0, le=100.0)
 
     async def process(self, context: ProcessingContext) -> Any:
@@ -6508,28 +6632,28 @@ class ModelSamplingAuraFlow(BaseNode):
         # Create node instance
         node = ModelSamplingAuraFlow()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["shift"] = self.shift
 
         # Call the node function
         result = node.patch_aura(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
 class ModelSamplingFlux(BaseNode):
     """ModelSamplingFlux node from ComfyUI (category: advanced/model)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     max_shift: float = Field(default=1.15, description="max_shift parameter", ge=0.0, le=100.0)
     base_shift: float = Field(default=0.5, description="base_shift parameter", ge=0.0, le=100.0)
     width: int = Field(default=1024, description="width parameter", ge=16)
     height: int = Field(default=1024, description="height parameter", ge=16)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the ModelSamplingFlux node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_advanced import ModelSamplingFlux
@@ -6537,9 +6661,9 @@ class ModelSamplingFlux(BaseNode):
         # Create node instance
         node = ModelSamplingFlux()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["max_shift"] = self.max_shift
         kwargs["base_shift"] = self.base_shift
         kwargs["width"] = self.width
@@ -6548,17 +6672,18 @@ class ModelSamplingFlux(BaseNode):
         # Call the node function
         result = node.patch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class RescaleCFG(BaseNode):
     """RescaleCFG node from ComfyUI (category: advanced/model)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     multiplier: float = Field(default=0.7, description="multiplier parameter", ge=0.0, le=1.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the RescaleCFG node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_advanced import RescaleCFG
@@ -6566,25 +6691,26 @@ class RescaleCFG(BaseNode):
         # Create node instance
         node = RescaleCFG()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["multiplier"] = self.multiplier
 
         # Call the node function
         result = node.patch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class ModelComputeDtype(BaseNode):
     """ModelComputeDtype node from ComfyUI (category: advanced/debug/model)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     dtype: str = Field(default=None, description="dtype parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the ModelComputeDtype node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_advanced import ModelComputeDtype
@@ -6592,16 +6718,17 @@ class ModelComputeDtype(BaseNode):
         # Create node instance
         node = ModelComputeDtype()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["dtype"] = self.dtype
 
         # Call the node function
         result = node.patch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class PatchModelAddDownscale(BaseNode):
@@ -6616,24 +6743,24 @@ class PatchModelAddDownscale(BaseNode):
         # Create node instance
         node = PatchModelAddDownscale()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
 class ModelMergeSimple(BaseNode):
     """ModelMergeSimple node from ComfyUI (category: advanced/model_merging)"""
 
-    model1: Any = Field(default=None, description="model1 parameter")
-    model2: Any = Field(default=None, description="model2 parameter")
+    model1: Model = Field(default=None, description="model1 parameter")
+    model2: Model = Field(default=None, description="model2 parameter")
     ratio: float = Field(default=1.0, description="ratio parameter", ge=0.0, le=1.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the ModelMergeSimple node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_merging import ModelMergeSimple
@@ -6641,29 +6768,30 @@ class ModelMergeSimple(BaseNode):
         # Create node instance
         node = ModelMergeSimple()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model1"] = self.model1
-        kwargs["model2"] = self.model2
+        kwargs["model1"] = self.model1.value if self.model1 else None
+        kwargs["model2"] = self.model2.value if self.model2 else None
         kwargs["ratio"] = self.ratio
 
         # Call the node function
         result = node.merge(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class ModelMergeBlocks(BaseNode):
     """ModelMergeBlocks node from ComfyUI (category: advanced/model_merging)"""
 
-    model1: Any = Field(default=None, description="model1 parameter")
-    model2: Any = Field(default=None, description="model2 parameter")
+    model1: Model = Field(default=None, description="model1 parameter")
+    model2: Model = Field(default=None, description="model2 parameter")
     input: float = Field(default=1.0, description="input parameter", ge=0.0, le=1.0)
     middle: float = Field(default=1.0, description="middle parameter", ge=0.0, le=1.0)
     out: float = Field(default=1.0, description="out parameter", ge=0.0, le=1.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the ModelMergeBlocks node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_merging import ModelMergeBlocks
@@ -6671,10 +6799,10 @@ class ModelMergeBlocks(BaseNode):
         # Create node instance
         node = ModelMergeBlocks()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model1"] = self.model1
-        kwargs["model2"] = self.model2
+        kwargs["model1"] = self.model1.value if self.model1 else None
+        kwargs["model2"] = self.model2.value if self.model2 else None
         kwargs["input"] = self.input
         kwargs["middle"] = self.middle
         kwargs["out"] = self.out
@@ -6682,18 +6810,19 @@ class ModelMergeBlocks(BaseNode):
         # Call the node function
         result = node.merge(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class ModelSubtract(BaseNode):
     """ModelMergeSubtract node from ComfyUI (category: advanced/model_merging)"""
 
-    model1: Any = Field(default=None, description="model1 parameter")
-    model2: Any = Field(default=None, description="model2 parameter")
+    model1: Model = Field(default=None, description="model1 parameter")
+    model2: Model = Field(default=None, description="model2 parameter")
     multiplier: float = Field(default=1.0, description="multiplier parameter", le=10.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the ModelMergeSubtract node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_merging import ModelSubtract
@@ -6701,26 +6830,27 @@ class ModelSubtract(BaseNode):
         # Create node instance
         node = ModelSubtract()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model1"] = self.model1
-        kwargs["model2"] = self.model2
+        kwargs["model1"] = self.model1.value if self.model1 else None
+        kwargs["model2"] = self.model2.value if self.model2 else None
         kwargs["multiplier"] = self.multiplier
 
         # Call the node function
         result = node.merge(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class ModelAdd(BaseNode):
     """ModelMergeAdd node from ComfyUI (category: advanced/model_merging)"""
 
-    model1: Any = Field(default=None, description="model1 parameter")
-    model2: Any = Field(default=None, description="model2 parameter")
+    model1: Model = Field(default=None, description="model1 parameter")
+    model2: Model = Field(default=None, description="model2 parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the ModelMergeAdd node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_merging import ModelAdd
@@ -6728,24 +6858,25 @@ class ModelAdd(BaseNode):
         # Create node instance
         node = ModelAdd()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model1"] = self.model1
-        kwargs["model2"] = self.model2
+        kwargs["model1"] = self.model1.value if self.model1 else None
+        kwargs["model2"] = self.model2.value if self.model2 else None
 
         # Call the node function
         result = node.merge(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class CheckpointSave(BaseNode):
     """CheckpointSave node from ComfyUI (category: advanced/model_merging)"""
 
-    model: Any = Field(default=None, description="model parameter")
-    clip: Any = Field(default=None, description="clip parameter")
-    vae: Any = Field(default=None, description="vae parameter")
+    model: Model = Field(default=None, description="model parameter")
+    clip: Clip = Field(default=None, description="clip parameter")
+    vae: Vae = Field(default=None, description="vae parameter")
     filename_prefix: str = Field(default='checkpoints/ComfyUI', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
@@ -6756,28 +6887,28 @@ class CheckpointSave(BaseNode):
         # Create node instance
         node = CheckpointSave()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
-        kwargs["clip"] = self.clip
-        kwargs["vae"] = self.vae
+        kwargs["model"] = self.model.value if self.model else None
+        kwargs["clip"] = self.clip.value if self.clip else None
+        kwargs["vae"] = self.vae.value if self.vae else None
         kwargs["filename_prefix"] = self.filename_prefix
 
         # Call the node function
         result = node.save(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
 class CLIPMergeSimple(BaseNode):
     """CLIPMergeSimple node from ComfyUI (category: advanced/model_merging)"""
 
-    clip1: Any = Field(default=None, description="clip1 parameter")
-    clip2: Any = Field(default=None, description="clip2 parameter")
+    clip1: Clip = Field(default=None, description="clip1 parameter")
+    clip2: Clip = Field(default=None, description="clip2 parameter")
     ratio: float = Field(default=1.0, description="ratio parameter", ge=0.0, le=1.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Clip:
         """Process the CLIPMergeSimple node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_merging import CLIPMergeSimple
@@ -6785,27 +6916,28 @@ class CLIPMergeSimple(BaseNode):
         # Create node instance
         node = CLIPMergeSimple()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["clip1"] = self.clip1
-        kwargs["clip2"] = self.clip2
+        kwargs["clip1"] = self.clip1.value if self.clip1 else None
+        kwargs["clip2"] = self.clip2.value if self.clip2 else None
         kwargs["ratio"] = self.ratio
 
         # Call the node function
         result = node.merge(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Clip(raw_result)
 
 
 class CLIPSubtract(BaseNode):
     """CLIPMergeSubtract node from ComfyUI (category: advanced/model_merging)"""
 
-    clip1: Any = Field(default=None, description="clip1 parameter")
-    clip2: Any = Field(default=None, description="clip2 parameter")
+    clip1: Clip = Field(default=None, description="clip1 parameter")
+    clip2: Clip = Field(default=None, description="clip2 parameter")
     multiplier: float = Field(default=1.0, description="multiplier parameter", le=10.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Clip:
         """Process the CLIPMergeSubtract node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_merging import CLIPSubtract
@@ -6813,26 +6945,27 @@ class CLIPSubtract(BaseNode):
         # Create node instance
         node = CLIPSubtract()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["clip1"] = self.clip1
-        kwargs["clip2"] = self.clip2
+        kwargs["clip1"] = self.clip1.value if self.clip1 else None
+        kwargs["clip2"] = self.clip2.value if self.clip2 else None
         kwargs["multiplier"] = self.multiplier
 
         # Call the node function
         result = node.merge(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Clip(raw_result)
 
 
 class CLIPAdd(BaseNode):
     """CLIPMergeAdd node from ComfyUI (category: advanced/model_merging)"""
 
-    clip1: Any = Field(default=None, description="clip1 parameter")
-    clip2: Any = Field(default=None, description="clip2 parameter")
+    clip1: Clip = Field(default=None, description="clip1 parameter")
+    clip2: Clip = Field(default=None, description="clip2 parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Clip:
         """Process the CLIPMergeAdd node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_merging import CLIPAdd
@@ -6840,22 +6973,23 @@ class CLIPAdd(BaseNode):
         # Create node instance
         node = CLIPAdd()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["clip1"] = self.clip1
-        kwargs["clip2"] = self.clip2
+        kwargs["clip1"] = self.clip1.value if self.clip1 else None
+        kwargs["clip2"] = self.clip2.value if self.clip2 else None
 
         # Call the node function
         result = node.merge(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Clip(raw_result)
 
 
 class CLIPSave(BaseNode):
     """CLIPSave node from ComfyUI (category: advanced/model_merging)"""
 
-    clip: Any = Field(default=None, description="clip parameter")
+    clip: Clip = Field(default=None, description="clip parameter")
     filename_prefix: str = Field(default='clip/ComfyUI', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
@@ -6866,22 +7000,22 @@ class CLIPSave(BaseNode):
         # Create node instance
         node = CLIPSave()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["clip"] = self.clip
+        kwargs["clip"] = self.clip.value if self.clip else None
         kwargs["filename_prefix"] = self.filename_prefix
 
         # Call the node function
         result = node.save(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
 class VAESave(BaseNode):
     """VAESave node from ComfyUI (category: advanced/model_merging)"""
 
-    vae: Any = Field(default=None, description="vae parameter")
+    vae: Vae = Field(default=None, description="vae parameter")
     filename_prefix: str = Field(default='vae/ComfyUI_vae', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
@@ -6892,22 +7026,22 @@ class VAESave(BaseNode):
         # Create node instance
         node = VAESave()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["vae"] = self.vae
+        kwargs["vae"] = self.vae.value if self.vae else None
         kwargs["filename_prefix"] = self.filename_prefix
 
         # Call the node function
         result = node.save(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
 class ModelSave(BaseNode):
     """ModelSave node from ComfyUI (category: advanced/model_merging)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     filename_prefix: str = Field(default='diffusion_models/ComfyUI', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
@@ -6918,15 +7052,15 @@ class ModelSave(BaseNode):
         # Create node instance
         node = ModelSave()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["filename_prefix"] = self.filename_prefix
 
         # Call the node function
         result = node.save(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6942,13 +7076,13 @@ class ModelMergeSD1(BaseNode):
         # Create node instance
         node = ModelMergeSD1()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6964,13 +7098,13 @@ class ModelMergeSD1(BaseNode):
         # Create node instance
         node = ModelMergeSD1()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -6986,13 +7120,13 @@ class ModelMergeSDXL(BaseNode):
         # Create node instance
         node = ModelMergeSDXL()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7008,13 +7142,13 @@ class ModelMergeSD3_2B(BaseNode):
         # Create node instance
         node = ModelMergeSD3_2B()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7030,13 +7164,13 @@ class ModelMergeAuraflow(BaseNode):
         # Create node instance
         node = ModelMergeAuraflow()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7052,13 +7186,13 @@ class ModelMergeFlux1(BaseNode):
         # Create node instance
         node = ModelMergeFlux1()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7074,13 +7208,13 @@ class ModelMergeSD35_Large(BaseNode):
         # Create node instance
         node = ModelMergeSD35_Large()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7096,13 +7230,13 @@ class ModelMergeMochiPreview(BaseNode):
         # Create node instance
         node = ModelMergeMochiPreview()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7118,13 +7252,13 @@ class ModelMergeLTXV(BaseNode):
         # Create node instance
         node = ModelMergeLTXV()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7140,13 +7274,13 @@ class ModelMergeCosmos7B(BaseNode):
         # Create node instance
         node = ModelMergeCosmos7B()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7162,13 +7296,13 @@ class ModelMergeCosmos14B(BaseNode):
         # Create node instance
         node = ModelMergeCosmos14B()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7189,13 +7323,13 @@ class ModelMergeWAN2_1(BaseNode):
         # Create node instance
         node = ModelMergeWAN2_1()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7211,13 +7345,13 @@ class ModelMergeCosmosPredict2_2B(BaseNode):
         # Create node instance
         node = ModelMergeCosmosPredict2_2B()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7233,13 +7367,13 @@ class ModelMergeCosmosPredict2_14B(BaseNode):
         # Create node instance
         node = ModelMergeCosmosPredict2_14B()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7255,13 +7389,13 @@ class ModelMergeQwenImage(BaseNode):
         # Create node instance
         node = ModelMergeQwenImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7278,28 +7412,28 @@ class ModelPatchLoader(BaseNode):
         # Create node instance
         node = ModelPatchLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["name"] = self.name
 
         # Call the node function
         result = node.load_model_patch(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result[0] if isinstance(result, tuple) else result
 
 
 class QwenImageDiffsynthControlnet(BaseNode):
     """QwenImageDiffsynthControlnet node from ComfyUI (category: advanced/loaders/qwen)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     model_patch: Any = Field(default=None, description="model_patch parameter")
-    vae: Any = Field(default=None, description="vae parameter")
-    image: Any = Field(default=None, description="image parameter")
+    vae: Vae = Field(default=None, description="vae parameter")
+    image: ImageRef = Field(default=None, description="image parameter")
     strength: float = Field(default=1.0, description="strength parameter", le=10.0)
-    mask: Optional[Any] = Field(default=None, description="mask parameter")
+    mask: Optional[Mask] = Field(default=None, description="mask parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the QwenImageDiffsynthControlnet node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_patch import QwenImageDiffsynthControlnet
@@ -7307,33 +7441,34 @@ class QwenImageDiffsynthControlnet(BaseNode):
         # Create node instance
         node = QwenImageDiffsynthControlnet()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["model_patch"] = self.model_patch
-        kwargs["vae"] = self.vae
-        kwargs["image"] = self.image
+        kwargs["vae"] = self.vae.value if self.vae else None
+        kwargs["image"] = await context.image_to_tensor(self.image) if self.image else None
         kwargs["strength"] = self.strength
         if self.mask is not None:
-            kwargs["mask"] = self.mask
+            kwargs["mask"] = self.mask.value if self.mask else None
 
         # Call the node function
         result = node.diffsynth_controlnet(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class ZImageFunControlnet(BaseNode):
     """ZImageFunControlnet node from ComfyUI (category: advanced/loaders/zimage)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     model_patch: Any = Field(default=None, description="model_patch parameter")
-    vae: Any = Field(default=None, description="vae parameter")
+    vae: Vae = Field(default=None, description="vae parameter")
     strength: float = Field(default=1.0, description="strength parameter", le=10.0)
-    image: Optional[Any] = Field(default=None, description="image parameter")
-    inpaint_image: Optional[Any] = Field(default=None, description="inpaint_image parameter")
-    mask: Optional[Any] = Field(default=None, description="mask parameter")
+    image: Optional[ImageRef] = Field(default=None, description="image parameter")
+    inpaint_image: Optional[ImageRef] = Field(default=None, description="inpaint_image parameter")
+    mask: Optional[Mask] = Field(default=None, description="mask parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
         """Process the ZImageFunControlnet node."""
@@ -7343,34 +7478,34 @@ class ZImageFunControlnet(BaseNode):
         # Create node instance
         node = ZImageFunControlnet()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["model_patch"] = self.model_patch
-        kwargs["vae"] = self.vae
+        kwargs["vae"] = self.vae.value if self.vae else None
         kwargs["strength"] = self.strength
         if self.image is not None:
-            kwargs["image"] = self.image
+            kwargs["image"] = await context.image_to_tensor(self.image)
         if self.inpaint_image is not None:
-            kwargs["inpaint_image"] = self.inpaint_image
+            kwargs["inpaint_image"] = await context.image_to_tensor(self.inpaint_image)
         if self.mask is not None:
-            kwargs["mask"] = self.mask
+            kwargs["mask"] = self.mask.value if self.mask else None
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
 class USOStyleReference(BaseNode):
     """USOStyleReference node from ComfyUI (category: advanced/model_patches/flux)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     model_patch: Any = Field(default=None, description="model_patch parameter")
     clip_vision_output: Any = Field(default=None, description="clip_vision_output parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the USOStyleReference node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_model_patch import USOStyleReference
@@ -7378,17 +7513,18 @@ class USOStyleReference(BaseNode):
         # Create node instance
         node = USOStyleReference()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["model_patch"] = self.model_patch
         kwargs["clip_vision_output"] = self.clip_vision_output
 
         # Call the node function
         result = node.apply_patch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class Morphology(BaseNode):
@@ -7403,13 +7539,13 @@ class Morphology(BaseNode):
         # Create node instance
         node = Morphology()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7425,13 +7561,13 @@ class ImageRGBToYUV(BaseNode):
         # Create node instance
         node = ImageRGBToYUV()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7447,13 +7583,13 @@ class ImageYUVToRGB(BaseNode):
         # Create node instance
         node = ImageYUVToRGB()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7474,13 +7610,13 @@ class wanBlockSwap(BaseNode):
         # Create node instance
         node = wanBlockSwap()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7496,13 +7632,13 @@ class OptimalStepsScheduler(BaseNode):
         # Create node instance
         node = OptimalStepsScheduler()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7518,13 +7654,13 @@ class PerturbedAttentionGuidance(BaseNode):
         # Create node instance
         node = PerturbedAttentionGuidance()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7540,13 +7676,13 @@ class PerpNeg(BaseNode):
         # Create node instance
         node = PerpNeg()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7562,13 +7698,13 @@ class PerpNegGuider(BaseNode):
         # Create node instance
         node = PerpNegGuider()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7584,13 +7720,13 @@ class PhotoMakerLoader(BaseNode):
         # Create node instance
         node = PhotoMakerLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7606,13 +7742,13 @@ class PhotoMakerEncode(BaseNode):
         # Create node instance
         node = PhotoMakerEncode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7633,13 +7769,13 @@ class CLIPTextEncodePixArtAlpha(BaseNode):
         # Create node instance
         node = CLIPTextEncodePixArtAlpha()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7655,13 +7791,13 @@ class Blend(BaseNode):
         # Create node instance
         node = Blend()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7677,13 +7813,13 @@ class Blur(BaseNode):
         # Create node instance
         node = Blur()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7699,13 +7835,13 @@ class Quantize(BaseNode):
         # Create node instance
         node = Quantize()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7721,13 +7857,13 @@ class Sharpen(BaseNode):
         # Create node instance
         node = Sharpen()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7743,13 +7879,13 @@ class ImageScaleToTotalPixels(BaseNode):
         # Create node instance
         node = ImageScaleToTotalPixels()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7765,13 +7901,13 @@ class ResizeImageMaskNode(BaseNode):
         # Create node instance
         node = ResizeImageMaskNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7787,13 +7923,13 @@ class BatchImagesNode(BaseNode):
         # Create node instance
         node = BatchImagesNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7809,13 +7945,13 @@ class BatchMasksNode(BaseNode):
         # Create node instance
         node = BatchMasksNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7831,13 +7967,13 @@ class BatchLatentsNode(BaseNode):
         # Create node instance
         node = BatchLatentsNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7853,13 +7989,13 @@ class BatchImagesMasksLatentsNode(BaseNode):
         # Create node instance
         node = BatchImagesMasksLatentsNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7876,14 +8012,14 @@ class PreviewAny(BaseNode):
         # Create node instance
         node = PreviewAny()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["source"] = self.source
 
         # Call the node function
         result = node.main(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7899,13 +8035,13 @@ class String(BaseNode):
         # Create node instance
         node = String()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7921,13 +8057,13 @@ class StringMultiline(BaseNode):
         # Create node instance
         node = StringMultiline()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7943,13 +8079,13 @@ class Int(BaseNode):
         # Create node instance
         node = Int()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7965,13 +8101,13 @@ class Float(BaseNode):
         # Create node instance
         node = Float()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -7987,13 +8123,13 @@ class Boolean(BaseNode):
         # Create node instance
         node = Boolean()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8009,13 +8145,13 @@ class TextEncodeQwenImageEdit(BaseNode):
         # Create node instance
         node = TextEncodeQwenImageEdit()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8031,13 +8167,13 @@ class TextEncodeQwenImageEditPlus(BaseNode):
         # Create node instance
         node = TextEncodeQwenImageEditPlus()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8053,13 +8189,13 @@ class EmptyQwenImageLayeredLatentImage(BaseNode):
         # Create node instance
         node = EmptyQwenImageLayeredLatentImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8075,13 +8211,13 @@ class LatentRebatch(BaseNode):
         # Create node instance
         node = LatentRebatch()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8097,13 +8233,13 @@ class ImageRebatch(BaseNode):
         # Create node instance
         node = ImageRebatch()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8124,13 +8260,13 @@ class ScaleROPE(BaseNode):
         # Create node instance
         node = ScaleROPE()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8146,13 +8282,13 @@ class SelfAttentionGuidance(BaseNode):
         # Create node instance
         node = SelfAttentionGuidance()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8175,13 +8311,13 @@ sd3: clip-l, clip-g, t5
         # Create node instance
         node = TripleCLIPLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8197,13 +8333,13 @@ class EmptySD3LatentImage(BaseNode):
         # Create node instance
         node = EmptySD3LatentImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8219,13 +8355,13 @@ class CLIPTextEncodeSD3(BaseNode):
         # Create node instance
         node = CLIPTextEncodeSD3()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8241,13 +8377,13 @@ class ControlNetApplySD3(BaseNode):
         # Create node instance
         node = ControlNetApplySD3()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8268,13 +8404,13 @@ class SkipLayerGuidanceSD3(BaseNode):
         # Create node instance
         node = SkipLayerGuidanceSD3()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8290,13 +8426,13 @@ class SD_4XUpscale_Conditioning(BaseNode):
         # Create node instance
         node = SD_4XUpscale_Conditioning()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8317,13 +8453,13 @@ class SkipLayerGuidanceDiT(BaseNode):
         # Create node instance
         node = SkipLayerGuidanceDiT()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8344,13 +8480,13 @@ class SkipLayerGuidanceDiTSimple(BaseNode):
         # Create node instance
         node = SkipLayerGuidanceDiTSimple()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8366,13 +8502,13 @@ class StableZero123_Conditioning(BaseNode):
         # Create node instance
         node = StableZero123_Conditioning()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8388,13 +8524,13 @@ class StableZero123_Conditioning_Batched(BaseNode):
         # Create node instance
         node = StableZero123_Conditioning_Batched()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8410,13 +8546,13 @@ class SV3D_Conditioning(BaseNode):
         # Create node instance
         node = SV3D_Conditioning()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8432,13 +8568,13 @@ class StableCascade_EmptyLatentImage(BaseNode):
         # Create node instance
         node = StableCascade_EmptyLatentImage()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8454,13 +8590,13 @@ class StableCascade_StageC_VAEEncode(BaseNode):
         # Create node instance
         node = StableCascade_StageC_VAEEncode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8476,13 +8612,13 @@ class StableCascade_StageB_Conditioning(BaseNode):
         # Create node instance
         node = StableCascade_StageB_Conditioning()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8498,13 +8634,13 @@ class StableCascade_SuperResolutionControlnet(BaseNode):
         # Create node instance
         node = StableCascade_SuperResolutionControlnet()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8520,13 +8656,13 @@ class StringConcatenate(BaseNode):
         # Create node instance
         node = StringConcatenate()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8542,13 +8678,13 @@ class StringSubstring(BaseNode):
         # Create node instance
         node = StringSubstring()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8564,13 +8700,13 @@ class StringLength(BaseNode):
         # Create node instance
         node = StringLength()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8586,13 +8722,13 @@ class CaseConverter(BaseNode):
         # Create node instance
         node = CaseConverter()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8608,13 +8744,13 @@ class StringTrim(BaseNode):
         # Create node instance
         node = StringTrim()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8630,13 +8766,13 @@ class StringReplace(BaseNode):
         # Create node instance
         node = StringReplace()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8652,13 +8788,13 @@ class StringContains(BaseNode):
         # Create node instance
         node = StringContains()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8674,13 +8810,13 @@ class StringCompare(BaseNode):
         # Create node instance
         node = StringCompare()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8696,13 +8832,13 @@ class RegexMatch(BaseNode):
         # Create node instance
         node = RegexMatch()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8718,13 +8854,13 @@ class RegexExtract(BaseNode):
         # Create node instance
         node = RegexExtract()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8745,13 +8881,13 @@ class RegexReplace(BaseNode):
         # Create node instance
         node = RegexReplace()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8774,13 +8910,13 @@ Refine the uncond (negative) to align with the cond (positive) for improving qua
         # Create node instance
         node = TCFG()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8796,13 +8932,13 @@ class TomePatchModel(BaseNode):
         # Create node instance
         node = TomePatchModel()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8818,13 +8954,13 @@ class TorchCompileModel(BaseNode):
         # Create node instance
         node = TorchCompileModel()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8840,13 +8976,13 @@ class TrainLoraNode(BaseNode):
         # Create node instance
         node = TrainLoraNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8862,13 +8998,13 @@ class LoraModelLoader(BaseNode):
         # Create node instance
         node = LoraModelLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8884,13 +9020,13 @@ class SaveLoRA(BaseNode):
         # Create node instance
         node = SaveLoRA()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8906,13 +9042,13 @@ class LossGraphNode(BaseNode):
         # Create node instance
         node = LossGraphNode()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8928,13 +9064,13 @@ class UpscaleModelLoader(BaseNode):
         # Create node instance
         node = UpscaleModelLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8950,13 +9086,13 @@ class ImageUpscaleWithModel(BaseNode):
         # Create node instance
         node = ImageUpscaleWithModel()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8972,13 +9108,13 @@ class SaveWEBM(BaseNode):
         # Create node instance
         node = SaveWEBM()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -8999,13 +9135,13 @@ class SaveVideo(BaseNode):
         # Create node instance
         node = SaveVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9026,13 +9162,13 @@ class CreateVideo(BaseNode):
         # Create node instance
         node = CreateVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9053,13 +9189,13 @@ class GetVideoComponents(BaseNode):
         # Create node instance
         node = GetVideoComponents()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9075,13 +9211,13 @@ class LoadVideo(BaseNode):
         # Create node instance
         node = LoadVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9090,7 +9226,7 @@ class ImageOnlyCheckpointLoader(BaseNode):
 
     ckpt_name: Any = Field(default=None, description="ckpt_name parameter")
 
-    async def process(self, context: ProcessingContext) -> tuple[Any, Any, Any]:
+    async def process(self, context: ProcessingContext) -> tuple[Model, Any, Vae]:
         """Process the ImageOnlyCheckpointLoader node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_video_model import ImageOnlyCheckpointLoader
@@ -9098,23 +9234,32 @@ class ImageOnlyCheckpointLoader(BaseNode):
         # Create node instance
         node = ImageOnlyCheckpointLoader()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["ckpt_name"] = self.ckpt_name
 
         # Call the node function
         result = node.load_checkpoint(**kwargs)
 
-        # Return result
-        return result if isinstance(result, tuple) else (result,)
+        # Wrap results in appropriate types
+        raw_results = result if isinstance(result, tuple) else (result,)
+        wrapped = []
+        for i, raw_val in enumerate(raw_results):
+            if i == 0:
+                wrapped.append(Model(raw_val))
+            if i == 1:
+                wrapped.append(raw_val)
+            if i == 2:
+                wrapped.append(Vae(raw_val))
+        return tuple(wrapped)
 
 
 class SVD_img2vid_Conditioning(BaseNode):
     """SVD_img2vid_Conditioning node from ComfyUI (category: conditioning/video_models)"""
 
     clip_vision: Any = Field(default=None, description="clip_vision parameter")
-    init_image: Any = Field(default=None, description="init_image parameter")
-    vae: Any = Field(default=None, description="vae parameter")
+    init_image: ImageRef = Field(default=None, description="init_image parameter")
+    vae: Vae = Field(default=None, description="vae parameter")
     width: int = Field(default=1024, description="width parameter", ge=16)
     height: int = Field(default=576, description="height parameter", ge=16)
     video_frames: int = Field(default=14, description="video_frames parameter", ge=1, le=4096)
@@ -9122,7 +9267,7 @@ class SVD_img2vid_Conditioning(BaseNode):
     fps: int = Field(default=6, description="fps parameter", ge=1, le=1024)
     augmentation_level: float = Field(default=0.0, description="augmentation_level parameter", ge=0.0, le=10.0)
 
-    async def process(self, context: ProcessingContext) -> tuple[Any, Any, Any]:
+    async def process(self, context: ProcessingContext) -> tuple[Conditioning, Conditioning, Latent]:
         """Process the SVD_img2vid_Conditioning node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_video_model import SVD_img2vid_Conditioning
@@ -9130,11 +9275,11 @@ class SVD_img2vid_Conditioning(BaseNode):
         # Create node instance
         node = SVD_img2vid_Conditioning()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["clip_vision"] = self.clip_vision
-        kwargs["init_image"] = self.init_image
-        kwargs["vae"] = self.vae
+        kwargs["init_image"] = await context.image_to_tensor(self.init_image) if self.init_image else None
+        kwargs["vae"] = self.vae.value if self.vae else None
         kwargs["width"] = self.width
         kwargs["height"] = self.height
         kwargs["video_frames"] = self.video_frames
@@ -9145,17 +9290,26 @@ class SVD_img2vid_Conditioning(BaseNode):
         # Call the node function
         result = node.encode(**kwargs)
 
-        # Return result
-        return result if isinstance(result, tuple) else (result,)
+        # Wrap results in appropriate types
+        raw_results = result if isinstance(result, tuple) else (result,)
+        wrapped = []
+        for i, raw_val in enumerate(raw_results):
+            if i == 0:
+                wrapped.append(Conditioning(raw_val))
+            if i == 1:
+                wrapped.append(Conditioning(raw_val))
+            if i == 2:
+                wrapped.append(Latent(raw_val))
+        return tuple(wrapped)
 
 
 class VideoLinearCFGGuidance(BaseNode):
     """VideoLinearCFGGuidance node from ComfyUI (category: sampling/video_models)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     min_cfg: float = Field(default=1.0, description="min_cfg parameter", ge=0.0, le=100.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the VideoLinearCFGGuidance node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_video_model import VideoLinearCFGGuidance
@@ -9163,25 +9317,26 @@ class VideoLinearCFGGuidance(BaseNode):
         # Create node instance
         node = VideoLinearCFGGuidance()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["min_cfg"] = self.min_cfg
 
         # Call the node function
         result = node.patch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class VideoTriangleCFGGuidance(BaseNode):
     """VideoTriangleCFGGuidance node from ComfyUI (category: sampling/video_models)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     min_cfg: float = Field(default=1.0, description="min_cfg parameter", ge=0.0, le=100.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Model:
         """Process the VideoTriangleCFGGuidance node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_video_model import VideoTriangleCFGGuidance
@@ -9189,24 +9344,25 @@ class VideoTriangleCFGGuidance(BaseNode):
         # Create node instance
         node = VideoTriangleCFGGuidance()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["min_cfg"] = self.min_cfg
 
         # Call the node function
         result = node.patch(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Model(raw_result)
 
 
 class ImageOnlyCheckpointSave(BaseNode):
     """ImageOnlyCheckpointSave node from ComfyUI (category: advanced/model_merging)"""
 
-    model: Any = Field(default=None, description="model parameter")
+    model: Model = Field(default=None, description="model parameter")
     clip_vision: Any = Field(default=None, description="clip_vision parameter")
-    vae: Any = Field(default=None, description="vae parameter")
+    vae: Vae = Field(default=None, description="vae parameter")
     filename_prefix: str = Field(default='checkpoints/ComfyUI', description="filename_prefix parameter")
 
     async def process(self, context: ProcessingContext) -> Any:
@@ -9217,24 +9373,24 @@ class ImageOnlyCheckpointSave(BaseNode):
         # Create node instance
         node = ImageOnlyCheckpointSave()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["model"] = self.model
+        kwargs["model"] = self.model.value if self.model else None
         kwargs["clip_vision"] = self.clip_vision
-        kwargs["vae"] = self.vae
+        kwargs["vae"] = self.vae.value if self.vae else None
         kwargs["filename_prefix"] = self.filename_prefix
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
 class ConditioningSetAreaPercentageVideo(BaseNode):
     """ConditioningSetAreaPercentageVideo node from ComfyUI (category: conditioning)"""
 
-    conditioning: Any = Field(default=None, description="conditioning parameter")
+    conditioning: Conditioning = Field(default=None, description="conditioning parameter")
     width: float = Field(default=1.0, description="width parameter", ge=0, le=1.0)
     height: float = Field(default=1.0, description="height parameter", ge=0, le=1.0)
     temporal: float = Field(default=1.0, description="temporal parameter", ge=0, le=1.0)
@@ -9243,7 +9399,7 @@ class ConditioningSetAreaPercentageVideo(BaseNode):
     z: float = Field(default=0, description="z parameter", ge=0, le=1.0)
     strength: float = Field(default=1.0, description="strength parameter", ge=0.0, le=10.0)
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> Conditioning:
         """Process the ConditioningSetAreaPercentageVideo node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_video_model import ConditioningSetAreaPercentageVideo
@@ -9251,9 +9407,9 @@ class ConditioningSetAreaPercentageVideo(BaseNode):
         # Create node instance
         node = ConditioningSetAreaPercentageVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
-        kwargs["conditioning"] = self.conditioning
+        kwargs["conditioning"] = self.conditioning.value if self.conditioning else None
         kwargs["width"] = self.width
         kwargs["height"] = self.height
         kwargs["temporal"] = self.temporal
@@ -9265,8 +9421,9 @@ class ConditioningSetAreaPercentageVideo(BaseNode):
         # Call the node function
         result = node.append(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return Conditioning(raw_result)
 
 
 class WanImageToVideo(BaseNode):
@@ -9281,13 +9438,13 @@ class WanImageToVideo(BaseNode):
         # Create node instance
         node = WanImageToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9303,13 +9460,13 @@ class WanFunControlToVideo(BaseNode):
         # Create node instance
         node = WanFunControlToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9325,13 +9482,13 @@ class Wan22FunControlToVideo(BaseNode):
         # Create node instance
         node = Wan22FunControlToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9347,13 +9504,13 @@ class WanFirstLastFrameToVideo(BaseNode):
         # Create node instance
         node = WanFirstLastFrameToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9369,13 +9526,13 @@ class WanFunInpaintToVideo(BaseNode):
         # Create node instance
         node = WanFunInpaintToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9391,13 +9548,13 @@ class WanVaceToVideo(BaseNode):
         # Create node instance
         node = WanVaceToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9413,13 +9570,13 @@ class TrimVideoLatent(BaseNode):
         # Create node instance
         node = TrimVideoLatent()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9435,13 +9592,13 @@ class WanCameraImageToVideo(BaseNode):
         # Create node instance
         node = WanCameraImageToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9457,13 +9614,13 @@ class WanPhantomSubjectToVideo(BaseNode):
         # Create node instance
         node = WanPhantomSubjectToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9479,13 +9636,13 @@ class WanTrackToVideo(BaseNode):
         # Create node instance
         node = WanTrackToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9501,13 +9658,13 @@ class WanSoundImageToVideo(BaseNode):
         # Create node instance
         node = WanSoundImageToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9523,13 +9680,13 @@ class WanSoundImageToVideoExtend(BaseNode):
         # Create node instance
         node = WanSoundImageToVideoExtend()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9545,13 +9702,13 @@ class WanHuMoImageToVideo(BaseNode):
         # Create node instance
         node = WanHuMoImageToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9567,13 +9724,13 @@ class WanAnimateToVideo(BaseNode):
         # Create node instance
         node = WanAnimateToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9589,13 +9746,13 @@ class Wan22ImageToVideoLatent(BaseNode):
         # Create node instance
         node = Wan22ImageToVideoLatent()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9611,13 +9768,13 @@ class WanMoveVisualizeTracks(BaseNode):
         # Create node instance
         node = WanMoveVisualizeTracks()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9633,13 +9790,13 @@ class WanMoveTracksFromCoords(BaseNode):
         # Create node instance
         node = WanMoveTracksFromCoords()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9655,13 +9812,13 @@ class GenerateTracks(BaseNode):
         # Create node instance
         node = GenerateTracks()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9677,13 +9834,13 @@ class WanMoveConcatTrack(BaseNode):
         # Create node instance
         node = WanMoveConcatTrack()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9699,13 +9856,13 @@ class WanMoveTrackToVideo(BaseNode):
         # Create node instance
         node = WanMoveTrackToVideo()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
 
         # Call the node function
         result = node.process(**kwargs)
 
-        # Return result
+        # Wrap results in appropriate types
         return result
 
 
@@ -9717,7 +9874,7 @@ class WebcamCapture(BaseNode):
     height: int = Field(default=0, description="height parameter", ge=0, le={'_ref': 'MAX_RESOLUTION'})
     capture_on_queue: bool = Field(default=True, description="capture_on_queue parameter")
 
-    async def process(self, context: ProcessingContext) -> Any:
+    async def process(self, context: ProcessingContext) -> ImageRef:
         """Process the WebcamCapture node."""
         # Import the ComfyUI node class
         from comfy_extras.nodes_webcam import WebcamCapture
@@ -9725,7 +9882,7 @@ class WebcamCapture(BaseNode):
         # Create node instance
         node = WebcamCapture()
 
-        # Prepare inputs
+        # Prepare inputs (unwrap wrapper types)
         kwargs = {}
         kwargs["image"] = self.image
         kwargs["width"] = self.width
@@ -9735,6 +9892,7 @@ class WebcamCapture(BaseNode):
         # Call the node function
         result = node.load_capture(**kwargs)
 
-        # Return result
-        return result[0] if isinstance(result, tuple) else result
+        # Wrap results in appropriate types
+        raw_result = result[0] if isinstance(result, tuple) else result
+        return await context.image_from_tensor(raw_result)
 

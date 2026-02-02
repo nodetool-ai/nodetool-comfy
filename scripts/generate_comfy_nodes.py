@@ -26,23 +26,30 @@ TYPE_MAPPINGS = {
     "STRING": "str",
     "BOOLEAN": "bool",
     
-    # ComfyUI types - these are opaque types that get passed between nodes
-    "MODEL": "Any",  # Model patcher
-    "CLIP": "Any",  # CLIP model
-    "VAE": "Any",  # VAE model
-    "CONDITIONING": "Any",  # Conditioning tensor
-    "LATENT": "Any",  # Latent dict with samples
-    "IMAGE": "Any",  # Image tensor
-    "MASK": "Any",  # Mask tensor
-    "CONTROL_NET": "Any",  # ControlNet
-    "STYLE_MODEL": "Any",  # Style model
-    "GLIGEN": "Any",  # GLIGEN model
-    "UPSCALE_MODEL": "Any",  # Upscale model
-    "SAMPLER": "Any",  # Sampler
-    "SIGMAS": "Any",  # Sigmas
-    "NOISE": "Any",  # Noise
-    "GUIDER": "Any",  # Guider
-    "AUDIO": "Any",  # Audio tensor
+    # ComfyUI wrapper types - use our wrapper classes
+    "MODEL": "Model",  # Model patcher
+    "CLIP": "Clip",  # CLIP model
+    "VAE": "Vae",  # VAE model
+    "CONDITIONING": "Conditioning",  # Conditioning tensor
+    "LATENT": "Latent",  # Latent dict with samples
+    "IMAGE": "ImageRef",  # Image - use ImageRef from nodetool
+    "MASK": "Mask",  # Mask tensor
+    "CONTROL_NET": "ControlNet",  # ControlNet
+    "STYLE_MODEL": "StyleModel",  # Style model
+    "GLIGEN": "Gligen",  # GLIGEN model
+    "UPSCALE_MODEL": "UpscaleModel",  # Upscale model
+    "SAMPLER": "Sampler",  # Sampler
+    "SIGMAS": "Sigmas",  # Sigmas
+    "NOISE": "Noise",  # Noise
+    "GUIDER": "Guider",  # Guider
+    "AUDIO": "Audio",  # Audio tensor
+}
+
+# Types that need wrapping/unwrapping
+WRAPPER_TYPES = {
+    "MODEL", "CLIP", "VAE", "CONDITIONING", "LATENT", "MASK",
+    "CONTROL_NET", "STYLE_MODEL", "GLIGEN", "UPSCALE_MODEL",
+    "SAMPLER", "SIGMAS", "NOISE", "GUIDER", "AUDIO"
 }
 
 
@@ -51,7 +58,7 @@ def get_python_type(comfy_type: str, config: Optional[Dict] = None) -> str:
     Convert ComfyUI type to Python type annotation.
     
     Args:
-        comfy_type: ComfyUI type string (e.g., "INT", "FLOAT", "MODEL")
+        comfy_type: ComfyUI type string (e.g., "INT", "FLOAT", "MODEL", "IO.STRING")
         config: Optional config dict with default, min, max, etc.
         
     Returns:
@@ -60,6 +67,10 @@ def get_python_type(comfy_type: str, config: Optional[Dict] = None) -> str:
     # Handle combo/enum types (these should be List[str] for now)
     if comfy_type == "COMBO":
         return "str"
+    
+    # Handle IO.* types (strip IO. prefix)
+    if comfy_type.startswith("IO."):
+        comfy_type = comfy_type[3:]  # Remove "IO." prefix
     
     # Handle references like comfy.samplers.KSampler.SAMPLERS
     if comfy_type.startswith("comfy."):
@@ -194,12 +205,21 @@ def generate_process_method(node_info: Dict) -> List[str]:
         lines.append("        )")
         return lines
     
-    # Determine return type annotation
+    # Determine return type annotation with proper wrapper types
     if return_types:
+        return_type_strs = []
+        for rt in return_types:
+            # Normalize type (strip IO. prefix if present)
+            normalized_rt = rt[3:] if rt.startswith("IO.") else rt
+            if normalized_rt in TYPE_MAPPINGS:
+                return_type_strs.append(TYPE_MAPPINGS[normalized_rt])
+            else:
+                return_type_strs.append("Any")
+        
         if len(return_types) == 1:
-            return_annotation = " -> Any"
+            return_annotation = f" -> {return_type_strs[0]}"
         else:
-            return_annotation = f" -> tuple[{', '.join(['Any'] * len(return_types))}]"
+            return_annotation = f" -> tuple[{', '.join(return_type_strs)}]"
     else:
         return_annotation = " -> Any"
     
@@ -223,39 +243,95 @@ def generate_process_method(node_info: Dict) -> List[str]:
     lines.append("        # Create node instance")
     lines.append(f"        node = {class_name}()")
     lines.append("")
-    lines.append("        # Prepare inputs")
+    lines.append("        # Prepare inputs (unwrap wrapper types)")
     lines.append("        kwargs = {}")
     
-    # Add input parameters
+    # Add input parameters with unwrapping
     if node_style == "v1":
         input_types = node_info.get("input_types", {})
         required = input_types.get("required", {})
         optional = input_types.get("optional", {})
         
-        for field_name in required.keys():
-            if not isinstance(required[field_name], dict):
+        for field_name, field_info in required.items():
+            if not isinstance(field_info, dict):
                 continue
             sanitized_name = sanitize_field_name(field_name)
-            lines.append(f'        kwargs["{field_name}"] = self.{sanitized_name}')
+            field_type = field_info.get("type", "")
+            
+            # Normalize type (strip IO. prefix if present)
+            normalized_type = field_type[3:] if field_type.startswith("IO.") else field_type
+            
+            # Unwrap ComfyUI wrapper types, convert ImageRef to tensor
+            if normalized_type in WRAPPER_TYPES:
+                lines.append(f'        kwargs["{field_name}"] = self.{sanitized_name}.value if self.{sanitized_name} else None')
+            elif normalized_type == "IMAGE":
+                lines.append(f'        kwargs["{field_name}"] = await context.image_to_tensor(self.{sanitized_name}) if self.{sanitized_name} else None')
+            else:
+                lines.append(f'        kwargs["{field_name}"] = self.{sanitized_name}')
         
-        for field_name in optional.keys():
-            if not isinstance(optional[field_name], dict):
+        for field_name, field_info in optional.items():
+            if not isinstance(field_info, dict):
                 continue
             sanitized_name = sanitize_field_name(field_name)
-            lines.append(f'        if self.{sanitized_name} is not None:')
-            lines.append(f'            kwargs["{field_name}"] = self.{sanitized_name}')
+            field_type = field_info.get("type", "")
+            
+            # Normalize type (strip IO. prefix if present)
+            normalized_type = field_type[3:] if field_type.startswith("IO.") else field_type
+            
+            # Unwrap ComfyUI wrapper types, convert ImageRef to tensor
+            if normalized_type in WRAPPER_TYPES:
+                lines.append(f'        if self.{sanitized_name} is not None:')
+                lines.append(f'            kwargs["{field_name}"] = self.{sanitized_name}.value if self.{sanitized_name} else None')
+            elif normalized_type == "IMAGE":
+                lines.append(f'        if self.{sanitized_name} is not None:')
+                lines.append(f'            kwargs["{field_name}"] = await context.image_to_tensor(self.{sanitized_name})')
+            else:
+                lines.append(f'        if self.{sanitized_name} is not None:')
+                lines.append(f'            kwargs["{field_name}"] = self.{sanitized_name}')
     
     lines.append("")
     lines.append("        # Call the node function")
     lines.append(f"        result = node.{function_name}(**kwargs)")
     lines.append("")
-    lines.append("        # Return result")
+    lines.append("        # Wrap results in appropriate types")
     
     if return_types:
         if len(return_types) == 1:
-            lines.append("        return result[0] if isinstance(result, tuple) else result")
+            rt = return_types[0]
+            # Normalize type (strip IO. prefix if present)
+            normalized_rt = rt[3:] if rt.startswith("IO.") else rt
+            
+            if normalized_rt in WRAPPER_TYPES:
+                wrapper_class = TYPE_MAPPINGS[normalized_rt]
+                lines.append("        raw_result = result[0] if isinstance(result, tuple) else result")
+                lines.append(f"        return {wrapper_class}(raw_result)")
+            elif normalized_rt == "IMAGE":
+                lines.append("        raw_result = result[0] if isinstance(result, tuple) else result")
+                lines.append("        return await context.image_from_tensor(raw_result)")
+            else:
+                lines.append("        return result[0] if isinstance(result, tuple) else result")
         else:
-            lines.append("        return result if isinstance(result, tuple) else (result,)")
+            lines.append("        raw_results = result if isinstance(result, tuple) else (result,)")
+            lines.append("        wrapped = []")
+            lines.append("        for i, raw_val in enumerate(raw_results):")
+            
+            # Build wrapping logic for each return type
+            for idx, rt in enumerate(return_types):
+                # Normalize type (strip IO. prefix if present)
+                normalized_rt = rt[3:] if rt.startswith("IO.") else rt
+                
+                if normalized_rt in WRAPPER_TYPES:
+                    wrapper_class = TYPE_MAPPINGS[normalized_rt]
+                    lines.append(f"            if i == {idx}:")
+                    lines.append(f"                wrapped.append({wrapper_class}(raw_val))")
+                elif normalized_rt == "IMAGE":
+                    lines.append(f"            if i == {idx}:")
+                    lines.append(f"                wrapped.append(await context.image_from_tensor(raw_val))")
+                else:
+                    lines.append(f"            if i == {idx}:")
+                    lines.append(f"                wrapped.append(raw_val)")
+            
+            lines.append("        return tuple(wrapped)")
     else:
         lines.append("        return result")
     
@@ -371,6 +447,12 @@ def generate_nodes_file(nodes: List[Dict], output_path: Path, category_filter: O
     lines.append("")
     lines.append("from nodetool.workflows.base_node import BaseNode")
     lines.append("from nodetool.workflows.processing_context import ProcessingContext")
+    lines.append("from nodetool.metadata.types import ImageRef")
+    lines.append("from nodetool.nodes.comfy.types import (")
+    lines.append("    Model, Clip, Vae, Conditioning, Latent, Mask,")
+    lines.append("    ControlNet, StyleModel, Gligen, UpscaleModel,")
+    lines.append("    Sampler, Sigmas, Noise, Guider, Audio")
+    lines.append(")")
     lines.append("from pydantic import Field")
     lines.append("")
     lines.append("")
