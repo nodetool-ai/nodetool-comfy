@@ -55,3 +55,10 @@ key.pem
 .aider*
 
 .codegpt
+
+# Model files for testing
+models/
+*.safetensors
+*.ckpt
+*.pth
+*.pt
