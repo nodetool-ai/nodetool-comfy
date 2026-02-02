@@ -42,24 +42,48 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install huggingface_hub
-        # Install package in editable mode
-        # Note: This may fail if nodetool-core is not publicly available
-        # For CI, we'll install just the core dependencies
+        # Install huggingface_hub with CLI tools
+        pip install "huggingface_hub[cli]"
+        # Install nodetool-core from GitHub
+        pip install git+https://github.com/nodetool-ai/nodetool.git@main
+        # Install PyTorch CPU version
         pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        # Install other core dependencies
         pip install pydantic einops transformers safetensors aiohttp pyyaml scipy tqdm psutil
     
     - name: Download sd-tiny model
       run: |
         mkdir -p models/checkpoints
         if [ ! -f models/checkpoints/sd_tiny.safetensors ]; then
-          echo "Downloading sd-tiny model..."
-          huggingface-cli download segmind/sd-tiny \
-            sd_tiny.safetensors \
-            --local-dir models/checkpoints \
-            --local-dir-use-symlinks False
+          echo "Downloading sd-tiny model using Python API..."
+          python -c "
+from huggingface_hub import hf_hub_download
+import os
+print('Downloading sd-tiny model from HuggingFace...')
+try:
+    file_path = hf_hub_download(
+        repo_id='segmind/sd-tiny',
+        filename='sd_tiny.safetensors',
+        local_dir='models/checkpoints',
+        local_dir_use_symlinks=False
+    )
+    print(f'✓ Downloaded successfully to: {file_path}')
+    print(f'✓ File size: {os.path.getsize(file_path) / 1024 / 1024:.1f} MB')
+except Exception as e:
+    print(f'✗ Download failed: {e}')
+    print('Trying curl fallback...')
+    exit(1)
+"
+          # Fallback to curl if Python download fails
+          if [ $? -ne 0 ]; then
+            echo "Downloading with curl..."
+            curl -L -o models/checkpoints/sd_tiny.safetensors \
+              https://huggingface.co/segmind/sd-tiny/resolve/main/sd_tiny.safetensors
+            echo "✓ Downloaded via curl"
+          fi
         else
-          echo "Model already cached"
+          echo "✓ Model already cached: models/checkpoints/sd_tiny.safetensors"
+          ls -lh models/checkpoints/sd_tiny.safetensors
         fi
     
     - name: Validate generated nodes
