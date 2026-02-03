@@ -60,9 +60,8 @@ packages = [
   "src/node_helpers.py",
   "src/protocol.py",
 ]
-artifacts = [
-  "src/nodetool/package_metadata/nodetool-comfy.json",
-  "package_metadata/nodetool-comfy.json",
+include = [
+    "src/nodetool/package_metadata/*.json",
 ]
 
 [tool.setuptools]
