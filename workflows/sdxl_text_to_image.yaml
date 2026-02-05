@@ -1,0 +1,74 @@
+# Simple SDXL Text-to-Image Workflow
+# This demonstrates how to define a workflow with text inputs
+
+name: "SDXL Text to Image"
+description: "Generate images from text prompts using SDXL."
+category: "comfy.workflows.sdxl"
+class_name: "SDXLTextToImage"
+
+inputs:
+  prompt:
+    node: "6"
+    field: "text"
+    type: str
+    default: "A beautiful sunset over mountains"
+    description: "The positive prompt for image generation"
+  
+  negative_prompt:
+    node: "7"
+    field: "text"
+    type: str
+    default: "blurry, low quality"
+    description: "The negative prompt (things to avoid)"
+  
+  seed:
+    node: "3"
+    field: "seed"
+    type: int
+    default: 0
+    min: 0
+    max: 18446744073709551615
+    description: "Random seed for generation"
+  
+  steps:
+    node: "3"
+    field: "steps"
+    type: int
+    default: 20
+    min: 1
+    max: 100
+    description: "Number of sampling steps"
+  
+  cfg_scale:
+    node: "3"
+    field: "cfg"
+    type: float
+    default: 7.0
+    min: 1.0
+    max: 30.0
+    description: "Classifier-free guidance scale"
+  
+  width:
+    node: "5"
+    field: "width"
+    type: int
+    default: 1024
+    min: 64
+    max: 2048
+    description: "Output image width"
+  
+  height:
+    node: "5"
+    field: "height"
+    type: int
+    default: 1024
+    min: 64
+    max: 2048
+    description: "Output image height"
+
+outputs:
+  image:
+    node: "9"
+    type: ImageRef
+    output_index: 0
+    description: "Generated image"
